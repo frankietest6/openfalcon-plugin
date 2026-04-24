@@ -1,0 +1,14 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
+
+# Build artifacts
+*.tar.gz
+dist/
+
+# Plugin config (lives in /home/fpp/media/config/plugin.openfalcon at runtime,
+# not in this repo, but ignore here just in case)
+plugin.openfalcon

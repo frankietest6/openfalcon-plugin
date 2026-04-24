@@ -1,0 +1,45 @@
+{
+	"repoName": "openfalcon-plugin",
+	"name": "OpenFalcon",
+	"author": "OpenFalcon Contributors",
+	"description": "Connects FPP to a self-hosted OpenFalcon server for viewer voting and jukebox control.",
+	"homeURL": "https://github.com/frankietest6/openfalcon-plugin",
+	"srcURL": "https://github.com/frankietest6/openfalcon-plugin.git",
+	"bugURL": "https://github.com/frankietest6/openfalcon-plugin/issues",
+	"allowUpdates": 1,
+	"versions": [
+		{
+			"minFPPVersion": "5.0",
+			"maxFPPVersion": "7.99",
+			"branch": "main",
+			"sha": "",
+			"dependencies": {
+				"plugins": [],
+				"packages": [],
+				"scripts": []
+			}
+		},
+		{
+			"minFPPVersion": "8.0",
+			"maxFPPVersion": "8.99",
+			"branch": "main",
+			"sha": "",
+			"dependencies": {
+				"plugins": [],
+				"packages": [],
+				"scripts": []
+			}
+		},
+		{
+			"minFPPVersion": "9.0",
+			"maxFPPVersion": "0",
+			"branch": "main",
+			"sha": "",
+			"dependencies": {
+				"plugins": [],
+				"packages": [],
+				"scripts": []
+			}
+		}
+	]
+}
