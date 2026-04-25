@@ -5,7 +5,7 @@
 // OpenFalcon server; queues sequences when viewers vote/request.
 // ============================================================
 
-$PLUGIN_VERSION = "0.1.0";
+$PLUGIN_VERSION = "0.2.0";
 
 // Suppress FPP web UI JS output when running from CLI
 $skipJSsettings = true;
@@ -213,6 +213,7 @@ function readFppPlaylistSequences($playlistName) {
     if (!is_array($items)) return null;
 
     $result = array();
+    $position = 0;
     foreach ($items as $item) {
         // Possible item types: 'sequence', 'both' (sequence + media), 'media', 'pause', 'branch', etc.
         // We care about sequences and 'both' (which plays a sequence with associated media)
@@ -226,6 +227,7 @@ function readFppPlaylistSequences($playlistName) {
             $sequenceFile = $item['mediaName'];
         }
 
+        $position++;  // Increment for EVERY item — this is the FPP playlist position (1-indexed)
         if ($sequenceFile === '') continue;
 
         // Strip .fseq / .mp3 / etc. for the "name"
@@ -235,6 +237,7 @@ function readFppPlaylistSequences($playlistName) {
             'name'            => $name,
             'displayName'     => prettifyName($name),
             'durationSeconds' => isset($item['duration']) ? intval($item['duration']) : null,
+            'playlistIndex'   => $position,  // <-- CRITICAL: this is what FPP uses for Insert Playlist
         );
     }
 
@@ -335,6 +338,8 @@ $lastPlayingReported = "";
 $lastNextReported = "";
 $lastQueuedForSequence = "";
 $lastQueuedAt = 0;
+$lastInsertedSequence = "";   // Name of last sequence we inserted via Immediate;
+                              // used to detect "viewer request currently playing"
 $lastHeartbeat = 0;
 $sequencesClearedWhenIdle = false;
 
@@ -386,6 +391,7 @@ while (true) {
             ofReportNext('');
             $lastPlayingReported = '';
             $lastNextReported = '';
+            $lastInsertedSequence = '';
             $sequencesClearedWhenIdle = true;
             logEntry_verbose("FPP idle. Cleared sequences on server.");
         }
@@ -450,12 +456,26 @@ while (true) {
             }
 
             if ($nextSeq !== null && $nextIdx !== null) {
-                if ($cfg['interruptSchedule']) {
-                    logEntry("Interrupting with: $nextSeq at playlist index $nextIdx");
+                // If interrupt-mode is on but the currently-playing sequence is one
+                // we inserted (i.e. a viewer request is already playing), QUEUE the
+                // new request via "After Current" instead of clobbering it. The
+                // schedule's main playlist is still interrupted (which is what
+                // interrupt-mode is for), but viewer requests don't interrupt each
+                // other.
+                $isViewerRequestPlaying = ($lastInsertedSequence !== ""
+                    && $currentlyPlaying === $lastInsertedSequence);
+
+                if ($cfg['interruptSchedule'] && !$isViewerRequestPlaying) {
+                    logEntry("Interrupting schedule with: $nextSeq at playlist index $nextIdx");
                     insertPlaylistImmediate($cfg['remotePlaylist'], $nextIdx);
+                    $lastInsertedSequence = $nextSeq;
                 } else {
-                    logEntry("Queueing after current: $nextSeq at playlist index $nextIdx");
+                    $reason = $cfg['interruptSchedule']
+                        ? "viewer request already playing"
+                        : "non-interrupt mode";
+                    logEntry("Queueing after current ($reason): $nextSeq at playlist index $nextIdx");
                     insertPlaylistAfterCurrent($cfg['remotePlaylist'], $nextIdx);
+                    $lastInsertedSequence = $nextSeq;
                 }
                 $lastQueuedForSequence = $currentlyPlaying;
                 $lastQueuedAt = time();
