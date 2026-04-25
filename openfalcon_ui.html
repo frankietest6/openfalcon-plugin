@@ -73,6 +73,19 @@ if (!empty(trim((string)$ps))) {
     margin: 0; font-size: 1.4rem; font-weight: 700; color: var(--of-text);
     display: flex; align-items: baseline; gap: 0.5rem;
   }
+  .of-back-link {
+    display: inline-block; margin-bottom: 0.75rem;
+    color: var(--of-text-muted); text-decoration: none;
+    font-size: 0.85rem; font-weight: 500;
+    padding: 0.3rem 0.75rem; border-radius: var(--of-pill);
+    border: 1px solid var(--of-border);
+    background: var(--of-bg-input);
+    transition: all 0.15s;
+  }
+  .of-back-link:hover {
+    color: var(--of-text); border-color: var(--of-border-hover);
+    background: var(--of-bg);
+  }
   .of-card-subtitle {
     margin-top: 0.3rem; font-size: 0.85rem; color: var(--of-text-muted);
   }
@@ -225,6 +238,7 @@ if (!empty(trim((string)$ps))) {
   <div class="of-card">
 
   <div class="of-card-header">
+    <a href="/" class="of-back-link" title="Return to FPP main page">&larr; Back to FPP</a>
     <h1>OpenFalcon Plugin Configuration</h1>
     <div class="of-card-subtitle">Manage your connection, playlist, and listener &middot; <span class="of-version">v<?php echo htmlspecialchars($pluginVersion); ?></span></div>
   </div>
