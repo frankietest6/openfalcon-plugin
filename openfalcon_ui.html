@@ -7,7 +7,7 @@ $pluginName = "openfalcon";
 $pluginConfigFile = $settings['configDirectory'] . "/plugin." . $pluginName;
 $pluginSettings = @parse_ini_file($pluginConfigFile) ?: array();
 
-$pluginVersion = "0.7.11";
+$pluginVersion = "0.7.12";
 
 // Helper for safe display of saved values
 function val($settings, $key, $default = '') {
@@ -352,6 +352,10 @@ if (!empty(trim((string)$ps))) {
         <button type="button" class="of-btn of-btn-primary" onclick="syncPlaylist();">Sync Now</button>
         <span id="syncStatus" class="of-status muted"></span>
       </div>
+      <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.6rem; font-size: 0.88rem; color: var(--of-text-muted); cursor: pointer;">
+        <input type="checkbox" id="syncMetadataCheckbox" checked style="cursor: pointer;">
+        Read MP3 tags during sync (slower, but uses real song titles &amp; artists)
+      </label>
     </div>
   </div>
 
@@ -623,6 +627,22 @@ if (!empty(trim((string)$ps))) {
     return (name || '').replace(/[_\-]+/g, ' ').replace(/\s+/g, ' ').trim();
   }
 
+  // Some encoders stuff a cover-art URL into the audio file's comment tag.
+  // We pull it out, strip wrapping quotes/punctuation, and validate it
+  // looks like an image URL before using it.
+  function parseAlbumArtFromComment(comment) {
+    if (!comment || typeof comment !== 'string') return '';
+    let candidate = comment.trim();
+    if (candidate.endsWith(',')) candidate = candidate.slice(0, -1).trim();
+    if (candidate.startsWith('"') && candidate.endsWith('"')) {
+      candidate = candidate.slice(1, -1).trim();
+    }
+    // Validate URL + image extension
+    if (!/^https?:\/\//i.test(candidate)) return '';
+    if (!/\.(jpe?g|png|webp|gif)(\?.*)?$/i.test(candidate)) return '';
+    return candidate;
+  }
+
   async function syncPlaylist() {
     const serverUrl = document.getElementById('serverUrl').value.trim().replace(/\/$/, '');
     const showToken = document.getElementById('showToken').value.trim();
@@ -654,24 +674,70 @@ if (!empty(trim((string)$ps))) {
 
       const sequences = [];
       let playlistIndex = 1;
+
+      // Track items so we can fetch tags after the basic loop
+      const itemsForTags = [];
       items.forEach(function(item) {
         let fileName = '';
-        if (item.type === 'both' || item.type === 'sequence') fileName = item.sequenceName || '';
-        else if (item.type === 'media') fileName = item.mediaName || '';
+        let mediaName = '';
+        if (item.type === 'both') {
+          fileName = item.sequenceName || '';
+          mediaName = item.mediaName || '';
+        } else if (item.type === 'sequence') {
+          fileName = item.sequenceName || '';
+        } else if (item.type === 'media') {
+          fileName = item.mediaName || '';
+          mediaName = item.mediaName || '';
+        }
         if (!fileName) return;
         const name = fileName.replace(/\.[^.]+$/, '');
+        const idx = sequences.length;
         sequences.push({
           name: name,
           displayName: prettifyName(name),
           durationSeconds: item.duration ? Math.round(item.duration) : null,
           playlistIndex: playlistIndex,
         });
+        // Queue any item with associated audio for tag fetching
+        if (mediaName) {
+          itemsForTags.push({ index: idx, mediaName: mediaName });
+        }
         playlistIndex++;
       });
 
       if (sequences.length === 0) {
         setStatus('syncStatus', 'No playable sequences in playlist', 'error');
         return;
+      }
+
+      // Fetch MP3/audio tags from FPP (uses ffprobe internally — exposed as /api/media/<file>/meta)
+      // This gives us proper Title and Artist tags from the audio files themselves,
+      // overriding the prettified-from-filename guess.
+      const tagSync = document.getElementById('syncMetadataCheckbox');
+      const shouldFetchTags = !tagSync || tagSync.checked;
+      if (shouldFetchTags && itemsForTags.length > 0) {
+        for (let i = 0; i < itemsForTags.length; i++) {
+          const entry = itemsForTags[i];
+          setStatus('syncStatus',
+            'Reading tags ' + (i + 1) + '/' + itemsForTags.length + '…', 'muted');
+          try {
+            const metaRes = await fetch('/api/media/' + encodeURIComponent(entry.mediaName) + '/meta');
+            if (!metaRes.ok) continue;
+            const meta = await metaRes.json();
+            const tags = (meta && meta.format && meta.format.tags) || {};
+            const title = (tags.title || tags.TITLE || '').trim();
+            const artist = (tags.artist || tags.ARTIST || '').trim();
+            if (title) sequences[entry.index].displayName = title;
+            if (artist) sequences[entry.index].artist = artist;
+            // Some encoders stuff a cover-art URL in the comment tag
+            const comment = (tags.comment || tags.COMMENT || '').trim();
+            const coverUrl = parseAlbumArtFromComment(comment);
+            if (coverUrl) sequences[entry.index].imageUrl = coverUrl;
+          } catch (e) {
+            // Per-file failure shouldn't abort the whole sync
+            console.warn('Tag fetch failed for', entry.mediaName, e);
+          }
+        }
       }
 
       setStatus('syncStatus', 'Pushing ' + sequences.length + ' sequences to OpenFalcon…', 'muted');
