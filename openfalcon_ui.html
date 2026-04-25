@@ -7,7 +7,7 @@ $pluginName = "openfalcon";
 $pluginConfigFile = $settings['configDirectory'] . "/plugin." . $pluginName;
 $pluginSettings = @parse_ini_file($pluginConfigFile) ?: array();
 
-$pluginVersion = "0.6.1";
+$pluginVersion = "0.7.5";
 
 // Helper for safe display of saved values
 function val($settings, $key, $default = '') {
@@ -23,89 +23,190 @@ if (!empty(trim((string)$ps))) {
 ?>
 
 <style>
-  .of-page { max-width: 1100px; margin: 0 auto; padding: 1rem 1.25rem; color: #1a1a1a; }
-  .of-page h1 { font-size: 2rem; font-weight: 700; margin-bottom: 1.5rem; color: #111; }
-  .of-page h2 { font-size: 1.5rem; font-weight: 700; color: #c00; margin: 2rem 0 1rem; text-align: center; }
+  /* ============================================================
+     OpenFalcon Plugin Config — Stage Lights theme (matches admin)
+     Scoped to .of-page so we don't fight FPP's own styles.
+     Tracks light/dark via prefers-color-scheme.
+     ============================================================ */
+  .of-page {
+    /* Default: dark Stage Lights */
+    --of-bg: #0a1428;
+    --of-bg-elevated: #14233f;
+    --of-bg-input: #0d1b35;
+    --of-border: #1e3050;
+    --of-border-hover: #2c4773;
+    --of-text: #e8eef7;
+    --of-text-muted: #8b9bb4;
+    --of-text-dim: #5a6a85;
+    --of-accent: #ef4444;
+    --of-accent-hover: #dc2626;
+    --of-accent-text: #ffffff;
+    --of-success: #4ade80;
+    --of-success-soft: rgba(74,222,128,0.15);
+    --of-success-border: rgba(74,222,128,0.4);
+    --of-danger: #ef4444;
+    --of-danger-soft: rgba(239,68,68,0.15);
+    --of-danger-border: rgba(239,68,68,0.4);
+    --of-link: #60a5fa;
 
-  .of-banner { padding: 1.25rem; border-radius: 10px; text-align: center; font-weight: 600;
-               font-size: 1.05rem; margin-bottom: 1.5rem; }
-  .of-banner.running { background: #e7f8ec; color: #138a3e; border: 1px solid #b6e4c4; }
-  .of-banner.stopped { background: #fdecec; color: #c00; border: 1px solid #f6c2c2; }
+    --of-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    --of-radius: 10px;
+    --of-pill: 999px;
 
-  .of-row { display: grid; grid-template-columns: 1fr 1.4fr; gap: 1rem; padding: 1.1rem 0;
-            border-bottom: 1px solid #ececec; align-items: start; }
+    max-width: 1100px; margin: 0 auto; padding: 1.5rem 1.25rem;
+    color: var(--of-text);
+    background: var(--of-bg);
+    border-radius: var(--of-radius);
+    font-family: 'Inter', system-ui, -apple-system, Segoe UI, sans-serif;
+    box-shadow: var(--of-shadow);
+  }
+  @media (prefers-color-scheme: light) {
+    .of-page {
+      --of-bg: #f5f7fb;
+      --of-bg-elevated: #ffffff;
+      --of-bg-input: #ffffff;
+      --of-border: #d8dfeb;
+      --of-border-hover: #b0bbcd;
+      --of-text: #1a2c4f;
+      --of-text-muted: #5a6a85;
+      --of-text-dim: #8b9bb4;
+      --of-accent: #dc2626;
+      --of-accent-hover: #b91c1c;
+      --of-success: #16a34a;
+      --of-success-soft: rgba(22,163,74,0.10);
+      --of-success-border: rgba(22,163,74,0.30);
+      --of-danger: #dc2626;
+      --of-danger-soft: rgba(220,38,38,0.08);
+      --of-danger-border: rgba(220,38,38,0.30);
+      --of-link: #2563eb;
+      --of-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    }
+  }
+
+  .of-page h1 { font-size: 1.6rem; font-weight: 700; margin: 0 0 1.5rem;
+                color: var(--of-text); display: flex; align-items: baseline; gap: 0.6rem; }
+  .of-page h1 .of-version { font-size: 0.8rem; color: var(--of-text-dim); font-weight: 400;
+                            background: var(--of-bg-elevated); padding: 0.15rem 0.5rem;
+                            border-radius: var(--of-pill); border: 1px solid var(--of-border); }
+  .of-page h2 { font-size: 1.05rem; font-weight: 600; color: var(--of-accent);
+                margin: 2rem 0 0.5rem; text-align: center; letter-spacing: 0.02em; }
+
+  .of-banner { padding: 1rem 1.25rem; border-radius: var(--of-radius); text-align: center;
+               font-weight: 600; font-size: 1rem; margin-bottom: 1.5rem;
+               border: 1px solid; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+  .of-banner.running { background: var(--of-success-soft); color: var(--of-success);
+                       border-color: var(--of-success-border); }
+  .of-banner.stopped { background: var(--of-danger-soft); color: var(--of-danger);
+                       border-color: var(--of-danger-border); }
+  .of-banner::before {
+    content: ""; width: 0.6rem; height: 0.6rem; border-radius: 50%;
+    background: currentColor; box-shadow: 0 0 8px currentColor;
+  }
+
+  .of-section-header { text-align: center; padding-top: 0.5rem; }
+  .of-section-header h2 { display: inline-block; margin: 0; }
+  .of-section-header .of-section-sub { display: block; font-size: 0.85rem;
+                                        color: var(--of-text-muted); font-weight: 400;
+                                        margin-top: 0.25rem; }
+
+  .of-row { display: grid; grid-template-columns: 1fr 1.4fr; gap: 1.25rem;
+            padding: 1.1rem 0; border-bottom: 1px solid var(--of-border); align-items: start; }
   .of-row:last-child { border-bottom: none; }
-  .of-row .of-label { font-weight: 700; font-size: 1rem; }
-  .of-row .of-help { color: #6b6b6b; font-size: 0.9rem; line-height: 1.45; margin-top: 0.25rem; }
-  .of-row .of-help code { background: #f3f3f3; padding: 0.05rem 0.35rem; border-radius: 4px;
-                          font-size: 0.85em; }
-  .of-row .of-help.warn { color: #c00; font-weight: 600; }
+  .of-row .of-label { font-weight: 600; font-size: 0.95rem; color: var(--of-text); }
+  .of-row .of-help { color: var(--of-text-muted); font-size: 0.85rem;
+                     line-height: 1.5; margin-top: 0.3rem; }
+  .of-row .of-help code {
+    background: var(--of-bg-elevated); color: var(--of-text);
+    padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.85em;
+    border: 1px solid var(--of-border);
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+  }
+  .of-row .of-help.warn { color: var(--of-accent); font-weight: 600; }
   .of-row .of-control { display: flex; flex-direction: column; gap: 0.5rem; }
 
   .of-input, .of-select, .of-textarea {
-    width: 100%; padding: 0.6rem 0.75rem; border: 1px solid #ccc; border-radius: 6px;
-    font-size: 0.95rem; font-family: inherit; background: white;
+    width: 100%; padding: 0.6rem 0.75rem;
+    border: 1px solid var(--of-border); border-radius: 6px;
+    font-size: 0.95rem; font-family: inherit;
+    background: var(--of-bg-input); color: var(--of-text);
+    transition: border-color 0.15s, box-shadow 0.15s;
   }
   .of-input:focus, .of-select:focus, .of-textarea:focus {
-    outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+    outline: none; border-color: var(--of-accent);
+    box-shadow: 0 0 0 3px var(--of-danger-soft);
   }
+  .of-input::placeholder { color: var(--of-text-dim); }
   .of-textarea { min-height: 200px; font-family: ui-monospace, Menlo, Consolas, monospace;
-                 font-size: 0.85rem; }
+                 font-size: 0.85rem; line-height: 1.5; }
 
-  /* Toggle switch (RF-style green check / red X) */
-  .of-toggle { position: relative; display: inline-block; width: 56px; height: 30px; cursor: pointer; }
+  /* Toggle switch — themed accent + neutral track */
+  .of-toggle { position: relative; display: inline-block; width: 52px; height: 28px; cursor: pointer; }
   .of-toggle input { opacity: 0; width: 0; height: 0; }
-  .of-toggle-slider { position: absolute; inset: 0; background: #d65a5a; border-radius: 30px;
-                      transition: 0.2s; display: flex; align-items: center; padding: 0 8px;
-                      color: white; font-size: 14px; font-weight: bold; }
-  .of-toggle-slider::before { content: "✗"; margin-left: auto; }
-  .of-toggle-slider::after { content: ""; position: absolute; height: 22px; width: 22px; left: 4px;
-                             bottom: 4px; background: white; border-radius: 50%; transition: 0.2s; }
-  .of-toggle input:checked + .of-toggle-slider { background: #4caf50; }
-  .of-toggle input:checked + .of-toggle-slider::before { content: "✓"; margin-left: 0; margin-right: auto; }
-  .of-toggle input:checked + .of-toggle-slider::after { transform: translateX(26px); }
+  .of-toggle-slider {
+    position: absolute; inset: 0; background: var(--of-border); border-radius: 28px;
+    transition: 0.2s; display: flex; align-items: center; padding: 0 7px;
+    color: var(--of-text-muted); font-size: 12px; font-weight: bold;
+  }
+  .of-toggle-slider::before { content: "OFF"; margin-left: auto; font-size: 9px; letter-spacing: 0.05em; }
+  .of-toggle-slider::after {
+    content: ""; position: absolute; height: 20px; width: 20px; left: 4px; bottom: 4px;
+    background: white; border-radius: 50%; transition: 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .of-toggle input:checked + .of-toggle-slider { background: var(--of-accent); color: white; }
+  .of-toggle input:checked + .of-toggle-slider::before {
+    content: "ON"; margin-left: 0; margin-right: auto; font-size: 9px; letter-spacing: 0.05em;
+  }
+  .of-toggle input:checked + .of-toggle-slider::after { transform: translateX(24px); }
 
-  .of-btn { display: inline-block; padding: 0.55rem 1.1rem; border-radius: 999px;
-            font-size: 0.92rem; font-weight: 600; cursor: pointer; border: 2px solid;
-            background: white; transition: all 0.15s; text-decoration: none; }
-  .of-btn-primary { color: #2563eb; border-color: #2563eb; }
-  .of-btn-primary:hover { background: #2563eb; color: white; }
-  .of-btn-success { color: #138a3e; border-color: #138a3e; }
-  .of-btn-success:hover { background: #138a3e; color: white; }
-  .of-btn-danger { color: #c00; border-color: #c00; }
-  .of-btn-danger:hover { background: #c00; color: white; }
-  .of-btn-neutral { color: #444; border-color: #888; }
-  .of-btn-neutral:hover { background: #444; color: white; }
+  .of-btn {
+    display: inline-block; padding: 0.5rem 1rem; border-radius: var(--of-pill);
+    font-size: 0.9rem; font-weight: 600; cursor: pointer; border: 1px solid;
+    background: transparent; transition: all 0.15s; text-decoration: none;
+    font-family: inherit;
+  }
+  .of-btn-primary { color: var(--of-accent); border-color: var(--of-accent); }
+  .of-btn-primary:hover { background: var(--of-accent); color: var(--of-accent-text); }
+  .of-btn-success { color: var(--of-success); border-color: var(--of-success); }
+  .of-btn-success:hover { background: var(--of-success); color: var(--of-bg); }
+  .of-btn-danger { color: var(--of-danger); border-color: var(--of-danger); }
+  .of-btn-danger:hover { background: var(--of-danger); color: white; }
+  .of-btn-neutral { color: var(--of-text); border-color: var(--of-border-hover); }
+  .of-btn-neutral:hover { background: var(--of-bg-elevated); border-color: var(--of-text-muted); }
 
   .of-btn-group { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
-  .of-status { font-size: 0.9rem; }
-  .of-status.success { color: #138a3e; font-weight: 600; }
-  .of-status.error { color: #c00; font-weight: 600; }
-  .of-status.muted { color: #6b6b6b; }
+  .of-status { font-size: 0.85rem; }
+  .of-status.success { color: var(--of-success); font-weight: 600; }
+  .of-status.error { color: var(--of-danger); font-weight: 600; }
+  .of-status.muted { color: var(--of-text-muted); }
 
-  .of-section-header { text-align: center; }
-  .of-section-header h2 { display: inline-block; }
-  .of-section-header .of-section-sub { display: block; font-size: 0.95rem; color: #6b6b6b;
-                                        font-weight: normal; margin-top: 0.25rem; }
+  .of-log-output {
+    background: var(--of-bg-input); color: var(--of-text);
+    border: 1px solid var(--of-border); border-radius: var(--of-radius);
+    padding: 1rem; font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 0.78rem; white-space: pre-wrap; word-break: break-all;
+    max-height: 320px; overflow-y: auto; line-height: 1.5;
+  }
+  .of-log-output:empty::before {
+    content: "Click \"Tail Log\" to load recent log lines.";
+    color: var(--of-text-dim); font-style: italic;
+  }
 
-  .of-log-output { background: #1a1a1a; color: #e6edf3; border-radius: 8px; padding: 1rem;
-                   font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.82rem;
-                   white-space: pre-wrap; word-break: break-all; max-height: 320px; overflow-y: auto;
-                   line-height: 1.45; }
-  .of-log-output:empty::before { content: "Click \"Tail Log\" to load recent log lines."; color: #6b7280; font-style: italic; }
-
-  .of-page-footer { text-align: center; font-size: 0.85rem; color: #6b6b6b; margin-top: 2rem;
-                    padding-top: 1.25rem; border-top: 1px solid #ececec; }
-  .of-page-footer a { color: #2563eb; text-decoration: none; }
+  .of-page-footer {
+    text-align: center; font-size: 0.85rem; color: var(--of-text-muted);
+    margin-top: 2rem; padding-top: 1.25rem; border-top: 1px solid var(--of-border);
+  }
+  .of-page-footer a { color: var(--of-link); text-decoration: none; }
   .of-page-footer a:hover { text-decoration: underline; }
 
   @media (max-width: 720px) {
-    .of-row { grid-template-columns: 1fr; }
+    .of-row { grid-template-columns: 1fr; gap: 0.5rem; }
+    .of-page { padding: 1rem 0.75rem; }
   }
 </style>
 
 <div class="of-page">
-  <h1>OpenFalcon Plugin <span style="color: #888; font-weight: 400; font-size: 0.7em;">v<?php echo htmlspecialchars($pluginVersion); ?></span></h1>
+  <h1>OpenFalcon Plugin <span class="of-version">v<?php echo htmlspecialchars($pluginVersion); ?></span></h1>
 
   <!-- ============================================ -->
   <!-- LISTENER STATUS BANNER                       -->
@@ -366,7 +467,7 @@ if (!empty(trim((string)$ps))) {
       <div class="of-label">Verbose Logging</div>
       <div class="of-help">
         Logs every API call. Useful for debugging.
-        <span style="color: #c00; font-weight: 600;">Will produce a lot of log output.</span>
+        <span style="color: var(--of-accent); font-weight: 600;">Will produce a lot of log output.</span>
       </div>
     </div>
     <div class="of-control">
