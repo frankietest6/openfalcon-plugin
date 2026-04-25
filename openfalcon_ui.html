@@ -7,7 +7,7 @@ $pluginName = "openfalcon";
 $pluginConfigFile = $settings['configDirectory'] . "/plugin." . $pluginName;
 $pluginSettings = @parse_ini_file($pluginConfigFile) ?: array();
 
-$pluginVersion = "0.7.13";
+$pluginVersion = "0.7.14";
 
 // Helper for safe display of saved values
 function val($settings, $key, $default = '') {
@@ -153,6 +153,32 @@ if (!empty(trim((string)$ps))) {
                                         color: var(--of-text-muted); font-weight: 400;
                                         margin-top: 0.25rem; }
 
+  /* Plugin page tabs */
+  .of-tabs {
+    display: flex; flex-wrap: wrap; gap: 0.25rem;
+    border-bottom: 1px solid var(--of-border);
+    margin: 1.25rem 0 0.5rem;
+    padding: 0;
+  }
+  .of-tab-btn {
+    background: transparent; border: 0; padding: 0.6rem 1rem;
+    color: var(--of-text-muted); font-size: 0.9rem; font-weight: 500;
+    cursor: pointer; border-radius: 6px 6px 0 0;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s; font-family: inherit;
+    margin-bottom: -1px;
+  }
+  .of-tab-btn:hover { color: var(--of-text); background: var(--of-bg-input); }
+  .of-tab-btn.active {
+    color: var(--of-accent);
+    border-bottom-color: var(--of-accent);
+    font-weight: 600;
+  }
+  .of-tab-pane { display: none; }
+  .of-tab-pane.active { display: block; }
+  /* Hide tab section headers since the tab itself indicates the section */
+  .of-tab-pane > .of-section-header:first-child { display: none; }
+
   .of-row { display: grid; grid-template-columns: 1fr 1.4fr; gap: 1.25rem;
             padding: 1.1rem 0; border-bottom: 1px solid var(--of-border); align-items: start; }
   .of-row:last-child { border-bottom: none; }
@@ -266,9 +292,21 @@ if (!empty(trim((string)$ps))) {
     <?php echo $listenerRunning ? 'OpenFalcon Listener is Running' : 'OpenFalcon Listener is Stopped'; ?>
   </div>
 
+  <!-- Tab navigation -->
+  <div class="of-tabs" role="tablist">
+    <button type="button" class="of-tab-btn active" data-tab="server"      onclick="ofSwitchTab('server')">Server</button>
+    <button type="button" class="of-tab-btn"        data-tab="playlist"    onclick="ofSwitchTab('playlist')">Playlist</button>
+    <button type="button" class="of-tab-btn"        data-tab="behavior"    onclick="ofSwitchTab('behavior')">Behavior</button>
+    <button type="button" class="of-tab-btn"        data-tab="listener"    onclick="ofSwitchTab('listener')">Listener</button>
+    <button type="button" class="of-tab-btn"        data-tab="audio"       onclick="ofSwitchTab('audio')">Audio</button>
+    <button type="button" class="of-tab-btn"        data-tab="diagnostics" onclick="ofSwitchTab('diagnostics')">Diagnostics</button>
+    <button type="button" class="of-tab-btn"        data-tab="developer"   onclick="ofSwitchTab('developer')">Developer</button>
+  </div>
+
   <!-- ============================================ -->
-  <!-- SERVER CONNECTION                            -->
+  <!-- TAB: SERVER CONNECTION                       -->
   <!-- ============================================ -->
+  <div class="of-tab-pane active" data-tab-pane="server">
   <div class="of-section-header">
     <h2>Server Connection</h2>
   </div>
@@ -304,9 +342,12 @@ if (!empty(trim((string)$ps))) {
     </div>
   </div>
 
+  </div><!-- /tab: server -->
+
   <!-- ============================================ -->
-  <!-- PLAYLIST SETUP                               -->
+  <!-- TAB: PLAYLIST SETUP                          -->
   <!-- ============================================ -->
+  <div class="of-tab-pane" data-tab-pane="playlist">
   <div class="of-section-header">
     <h2>Playlist Setup</h2>
   </div>
@@ -359,9 +400,12 @@ if (!empty(trim((string)$ps))) {
     </div>
   </div>
 
+  </div><!-- /tab: playlist -->
+
   <!-- ============================================ -->
-  <!-- BEHAVIOR                                     -->
+  <!-- TAB: BEHAVIOR                                -->
   <!-- ============================================ -->
+  <div class="of-tab-pane" data-tab-pane="behavior">
   <div class="of-section-header">
     <h2>Behavior</h2>
   </div>
@@ -431,9 +475,12 @@ if (!empty(trim((string)$ps))) {
     </div>
   </div>
 
+  </div><!-- /tab: behavior -->
+
   <!-- ============================================ -->
-  <!-- LISTENER CONTROL                             -->
+  <!-- TAB: LISTENER CONTROL                        -->
   <!-- ============================================ -->
+  <div class="of-tab-pane" data-tab-pane="listener">
   <div class="of-section-header">
     <h2>Listener Control</h2>
   </div>
@@ -469,9 +516,75 @@ if (!empty(trim((string)$ps))) {
     </div>
   </div>
 
+  </div><!-- /tab: listener -->
+
   <!-- ============================================ -->
-  <!-- DIAGNOSTICS                                  -->
+  <!-- TAB: AUDIO STREAMING                         -->
   <!-- ============================================ -->
+  <div class="of-tab-pane" data-tab-pane="audio">
+  <div class="of-section-header">
+    <h2>Audio Streaming <span style="font-size: 0.7em; color: var(--of-text-dim); font-weight: 400;">(experimental)</span></h2>
+    <div class="of-section-sub">
+      Stream the show audio to viewer phones via WebSocket-synced HTML5 audio.
+      Requires Node.js on FPP (auto-installed). May have legal implications &mdash; see warning below.
+    </div>
+  </div>
+
+  <div class="of-row">
+    <div>
+      <div class="of-label">Enable Audio Streaming</div>
+      <div class="of-help warn">
+        WARNING: Streaming licensed music to anonymous viewers may require ASCAP/BMI/SoundExchange licensing.
+        Low-power FM broadcast to your driveway likely qualifies for performance carveouts;
+        internet streaming generally does not. You are responsible for compliance.
+      </div>
+    </div>
+    <div class="of-control">
+      <label class="of-toggle">
+        <input type="checkbox" id="audioStreamingEnabled"
+               <?php echo (val($pluginSettings, 'audioStreamingEnabled') === 'true') ? 'checked' : ''; ?>
+               onchange="SetPluginSetting('<?php echo $pluginName; ?>', 'audioStreamingEnabled', this.checked ? 'true' : 'false');">
+        <span class="of-toggle-slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <div class="of-row">
+    <div>
+      <div class="of-label">Audio Daemon Port</div>
+      <div class="of-help">
+        TCP port the audio daemon listens on. Default <code>8090</code>.
+        Must be reachable from viewer browsers if they're not on the same network.
+      </div>
+    </div>
+    <div class="of-control">
+      <input type="number" class="of-input" id="audioStreamingPort" min="1024" max="65535"
+             value="<?php echo htmlspecialchars(val($pluginSettings, 'audioStreamingPort') ?: '8090'); ?>"
+             onchange="SetPluginSetting('<?php echo $pluginName; ?>', 'audioStreamingPort', this.value);">
+    </div>
+  </div>
+
+  <div class="of-row">
+    <div>
+      <div class="of-label">Daemon Status</div>
+      <div class="of-help">
+        Live status of the audio streaming daemon. Restart Listener to apply changes after toggling.
+      </div>
+    </div>
+    <div class="of-control">
+      <div class="of-btn-group">
+        <span id="audioDaemonStatus" class="of-status muted">Checking…</span>
+        <button type="button" class="of-btn of-btn-neutral" onclick="checkAudioDaemon();" style="font-size: 0.8rem; padding: 4px 10px;">Refresh</button>
+      </div>
+    </div>
+  </div>
+
+  </div><!-- /tab: audio -->
+
+  <!-- ============================================ -->
+  <!-- TAB: DIAGNOSTICS                             -->
+  <!-- ============================================ -->
+  <div class="of-tab-pane" data-tab-pane="diagnostics">
   <div class="of-section-header">
     <h2>Diagnostics</h2>
   </div>
@@ -509,9 +622,12 @@ if (!empty(trim((string)$ps))) {
     </div>
   </div>
 
+  </div><!-- /tab: diagnostics -->
+
   <!-- ============================================ -->
-  <!-- ADVANCED / DEVELOPER                         -->
+  <!-- TAB: ADVANCED / DEVELOPER                    -->
   <!-- ============================================ -->
+  <div class="of-tab-pane" data-tab-pane="developer">
   <div class="of-section-header">
     <h2>Developer Settings</h2>
     <span class="of-section-sub">Probably best to leave these alone…</span>
@@ -553,6 +669,8 @@ if (!empty(trim((string)$ps))) {
       </div>
     </div>
   </div>
+
+  </div><!-- /tab: developer -->
 
   </div><!-- /of-card -->
 
@@ -807,6 +925,33 @@ if (!empty(trim((string)$ps))) {
   }
 
   // ============================================================
+  // Tab switching
+  // ============================================================
+  function ofSwitchTab(name) {
+    document.querySelectorAll('.of-tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === name);
+    });
+    document.querySelectorAll('.of-tab-pane').forEach(pane => {
+      pane.classList.toggle('active', pane.dataset.tabPane === name);
+    });
+    // Auto-check audio daemon status when audio tab opens
+    if (name === 'audio' && typeof checkAudioDaemon === 'function') {
+      checkAudioDaemon();
+    }
+    // Persist selection so refreshes return to same tab
+    try { localStorage.setItem('openfalcon_plugin_tab', name); } catch {}
+  }
+  // Restore last-selected tab on load
+  (function restoreTab() {
+    try {
+      const saved = localStorage.getItem('openfalcon_plugin_tab');
+      if (saved && document.querySelector(`.of-tab-pane[data-tab-pane="${saved}"]`)) {
+        ofSwitchTab(saved);
+      }
+    } catch {}
+  })();
+
+  // ============================================================
   // Live banner — polls plugin's listener_status.php to keep the
   // running/stopped banner in sync without page refresh.
   // ============================================================
@@ -831,6 +976,45 @@ if (!empty(trim((string)$ps))) {
 
   // Poll every 4 seconds while page is open
   setInterval(refreshListenerBanner, 4000);
+
+  // ============================================================
+  // AUDIO DAEMON STATUS
+  // ============================================================
+  async function checkAudioDaemon() {
+    const portInput = document.getElementById('audioStreamingPort');
+    const port = (portInput && portInput.value) || '8090';
+    const enabled = document.getElementById('audioStreamingEnabled')?.checked;
+    const statusEl = document.getElementById('audioDaemonStatus');
+    if (!statusEl) return;
+
+    if (!enabled) {
+      statusEl.textContent = 'Disabled';
+      statusEl.className = 'of-status muted';
+      return;
+    }
+
+    statusEl.textContent = 'Checking…';
+    statusEl.className = 'of-status muted';
+    try {
+      // Hit the daemon's /health on FPP itself (we're served by FPP)
+      const res = await fetch(`http://${window.location.hostname}:${port}/health`, {
+        signal: AbortSignal.timeout(2000),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        statusEl.textContent = `✓ Running (v${data.version || '?'}) on port ${port}`;
+        statusEl.className = 'of-status success';
+      } else {
+        statusEl.textContent = `Daemon returned ${res.status}`;
+        statusEl.className = 'of-status error';
+      }
+    } catch (e) {
+      statusEl.textContent = 'Not running — Restart Listener to start it';
+      statusEl.className = 'of-status error';
+    }
+  }
+  // Auto-check on load
+  setTimeout(checkAudioDaemon, 500);
 
   async function restartListener() {
     setStatus('restartStatus', 'Restarting…', 'muted');
