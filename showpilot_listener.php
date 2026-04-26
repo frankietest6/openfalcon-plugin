@@ -5,7 +5,11 @@
 // ShowPilot server; queues sequences when viewers vote/request.
 // ============================================================
 
-$PLUGIN_VERSION = "0.9.4";
+// Plugin version is defined in version.php — DO NOT hardcode here.
+// See that file for why we centralized it. Including with require_once
+// (not include_once) so a missing version file is a hard error rather
+// than silently running with $PLUGIN_VERSION undefined.
+require_once __DIR__ . '/version.php';
 
 // Suppress FPP web UI JS output when running from CLI
 $skipJSsettings = true;
