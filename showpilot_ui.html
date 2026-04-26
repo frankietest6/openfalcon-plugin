@@ -625,12 +625,15 @@ if (!empty(trim((string)$ps))) {
 
   </div><!-- /tab: developer -->
 
-  </div><!-- /of-card -->
-
+  <!-- Footer with project links — kept inside .of-card so the card's
+       background extends down to enclose them. Otherwise the link line
+       floats in the bare FPP page background, looking unfinished. -->
   <div class="of-page-footer">
     ShowPilot &middot; <a href="https://github.com/ShowPilotFPP/ShowPilot" target="_blank" rel="noopener">Server</a> &middot;
     <a href="https://github.com/ShowPilotFPP/ShowPilot-plugin" target="_blank" rel="noopener">Plugin source</a>
   </div>
+
+  </div><!-- /of-card -->
 </div>
 
 <script type="text/javascript">
@@ -666,6 +669,13 @@ if (!empty(trim((string)$ps))) {
       }
     }
   })();
+
+  // Set the browser tab title. FPP's plugin loader doesn't set one, so
+  // without this the tab shows the raw IP/URL — which is ugly when the
+  // user has multiple FPP-related tabs open. We do this from JS rather
+  // than a <title> tag because FPP injects this file mid-page; a <title>
+  // tag wouldn't reach the document head.
+  document.title = 'ShowPilot Plugin · FPP';
 
   // ============================================================
   // FPP setting save (REST API)
