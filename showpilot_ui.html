@@ -1007,28 +1007,85 @@ if (!empty(trim((string)$ps))) {
 
     for (let i = 0; i < withAudio.length; i++) {
       const seq = withAudio[i];
+
+      // Decide if this is a video file we need to extract audio from,
+      // or a regular audio file we can upload as-is. Detection is by
+      // extension because that's what FPP exposes via mediaName.
+      const ext = (seq.mediaName.match(/\.([^.]+)$/) || [, ''])[1].toLowerCase();
+      const isVideo = ['mp4', 'm4v', 'mov', 'mkv', 'avi', 'webm', 'wmv', 'flv'].indexOf(ext) !== -1;
+
       setStatus('syncStatus',
-        'Audio sync ' + (i + 1) + '/' + withAudio.length + ': ' + seq.mediaName,
+        'Audio sync ' + (i + 1) + '/' + withAudio.length + ': '
+          + (isVideo ? 'extracting audio from ' : '') + seq.mediaName,
         'muted');
 
-      // Read file from FPP. /api/file/Music/<name> serves the raw bytes.
-      // The plugin UI runs IN the FPP web context, so this is a same-origin
-      // request — no auth needed for FPP's own file serving.
+      // For audio files: read directly from FPP's file endpoint.
+      // For video files: hit our extract_audio.php which streams the
+      //   audio track demuxed (no re-encode) as M4A. ShowPilot stores
+      //   the M4A bytes; viewer's Web Audio decodes AAC natively.
+      // Both paths produce `fileBuffer` (ArrayBuffer) and `uploadMime`.
       let fileBuffer;
-      try {
-        const fileRes = await fetch('/api/file/Music/' + encodeURIComponent(seq.mediaName));
-        if (fileRes.status === 404) {
-          missingFromFpp.push(seq.mediaName);
+      let uploadMime;
+      if (isVideo) {
+        // extract_audio.php returns audio/mp4 (M4A). Same-origin call to
+        // FPP's plugin loader; no auth needed.
+        try {
+          const extractUrl = '/plugin.php?_menu=content&plugin=showpilot'
+            + '&page=extract_audio.php&nopage=1'
+            + '&file=' + encodeURIComponent(seq.mediaName);
+          const extRes = await fetch(extractUrl);
+          if (extRes.status === 404) {
+            missingFromFpp.push(seq.mediaName);
+            continue;
+          }
+          if (!extRes.ok) {
+            const body = await extRes.text();
+            failed.push(seq.mediaName + ' (extract ' + extRes.status + ': '
+              + body.slice(0, 80) + ')');
+            continue;
+          }
+          fileBuffer = await extRes.arrayBuffer();
+          if (fileBuffer.byteLength === 0) {
+            // Extraction "succeeded" with empty body — usually means
+            // ffmpeg crashed mid-stream after sending headers. Treat
+            // as failure rather than uploading 0 bytes.
+            failed.push(seq.mediaName + ' (extract returned no data)');
+            continue;
+          }
+          uploadMime = 'audio/mp4';
+        } catch (e) {
+          failed.push(seq.mediaName + ' (extract: ' + e.message + ')');
           continue;
         }
-        if (!fileRes.ok) {
-          failed.push(seq.mediaName + ' (FPP returned ' + fileRes.status + ')');
+      } else {
+        // Regular audio file. Read raw bytes from FPP.
+        try {
+          const fileRes = await fetch('/api/file/Music/' + encodeURIComponent(seq.mediaName));
+          if (fileRes.status === 404) {
+            missingFromFpp.push(seq.mediaName);
+            continue;
+          }
+          if (!fileRes.ok) {
+            failed.push(seq.mediaName + ' (FPP returned ' + fileRes.status + ')');
+            continue;
+          }
+          fileBuffer = await fileRes.arrayBuffer();
+        } catch (e) {
+          failed.push(seq.mediaName + ' (' + e.message + ')');
           continue;
         }
-        fileBuffer = await fileRes.arrayBuffer();
-      } catch (e) {
-        failed.push(seq.mediaName + ' (' + e.message + ')');
-        continue;
+        // Pick a sensible MIME from extension. The viewer-side decoder
+        // doesn't actually care (Web Audio sniffs the bytes), but
+        // ShowPilot stores this for completeness.
+        const mimeMap = {
+          mp3: 'audio/mpeg',
+          m4a: 'audio/mp4',
+          aac: 'audio/aac',
+          ogg: 'audio/ogg',
+          wav: 'audio/wav',
+          flac: 'audio/flac',
+        };
+        uploadMime = mimeMap[ext] || 'audio/mpeg';
       }
 
       // Compute SHA-256. Web crypto's `crypto.subtle.digest` is the fast
@@ -1078,7 +1135,7 @@ if (!empty(trim((string)$ps))) {
             method: 'POST',
             headers: {
               'Authorization': 'Bearer ' + showToken,
-              'Content-Type': 'audio/mpeg',
+              'Content-Type': uploadMime,
             },
             body: fileBuffer,
           }
