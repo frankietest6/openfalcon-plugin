@@ -31,5 +31,20 @@ chown -R fpp:fpp "$PLUGIN_DIR" 2>/dev/null
 chmod +x "$PLUGIN_DIR/commands/"*.php 2>/dev/null
 chmod +x "$PLUGIN_DIR/scripts/"*.sh 2>/dev/null
 
-# Restart fppd after install so it picks up our commands and starts the listener
+# Restart the listener directly so it picks up the new code immediately, without
+# requiring an fppd restart. PHP doesn't hot-reload — a running listener
+# process holds its loaded code in memory regardless of file changes on disk,
+# so we MUST kill the old process and spawn a fresh one for plugin updates to
+# take effect.
+#
+# We use the same restart command exposed in the FPP UI ("ShowPilot - Restart
+# Listener"). It does kill-then-spawn defensively, so it's safe to call whether
+# or not a listener is currently running.
+if [ -f "$PLUGIN_DIR/commands/restart_listener.php" ]; then
+    /usr/bin/php "$PLUGIN_DIR/commands/restart_listener.php" 2>&1 || true
+fi
+
+# Set restartFlag for any FPP version where the plugin manager UI checks it
+# to surface the "restart required" banner. The listener restart above already
+# took effect; this just keeps the UI honest.
 setSetting restartFlag 1
