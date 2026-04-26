@@ -56,15 +56,22 @@ if (!empty(trim((string)$ps))) {
     --of-radius: 10px;
     --of-pill: 999px;
 
-    /* Fill the viewport vertically with the theme's page background.
-       FPP's body is always white — without this, when we're in dark
-       mode the white shines through below the card wherever our
-       content doesn't reach. Using the theme's --of-bg means:
-       - Dark mode: dark navy fills below
-       - Light mode: near-white (matches FPP body, seamless)
-       Horizontal padding is already handled by FPP. */
+    /* Fill the viewport vertically AND horizontally with the theme's
+       page background. FPP's body has padding around its content area,
+       so without breaking out we leave thin strips of FPP's white
+       visible at the edges. The viewport-width trick (100vw + negative
+       margin = half the difference) extends our background to the full
+       viewport width regardless of FPP's container padding, while
+       internal padding keeps our content laid out properly. */
     background: var(--of-bg);
     min-height: 100vh;
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
+    padding: 1.5rem 2rem;
     box-sizing: border-box;
 
     color: var(--of-text);
