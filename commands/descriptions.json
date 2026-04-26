@@ -1,41 +1,41 @@
 [
   {
-    "name": "OpenFalcon - Turn Viewer Control On",
+    "name": "ShowPilot - Turn Viewer Control On",
     "script": "viewer_control_on.php",
     "args": []
   },
   {
-    "name": "OpenFalcon - Turn Viewer Control Off",
+    "name": "ShowPilot - Turn Viewer Control Off",
     "script": "viewer_control_off.php",
     "args": []
   },
   {
-    "name": "OpenFalcon - Switch to Voting Mode",
+    "name": "ShowPilot - Switch to Voting Mode",
     "script": "set_mode_voting.php",
     "args": []
   },
   {
-    "name": "OpenFalcon - Switch to Jukebox Mode",
+    "name": "ShowPilot - Switch to Jukebox Mode",
     "script": "set_mode_jukebox.php",
     "args": []
   },
   {
-    "name": "OpenFalcon - Restart Listener",
+    "name": "ShowPilot - Restart Listener",
     "script": "restart_listener.php",
     "args": []
   },
   {
-    "name": "OpenFalcon - Stop Listener",
+    "name": "ShowPilot - Stop Listener",
     "script": "stop_listener.php",
     "args": []
   },
   {
-    "name": "OpenFalcon - Turn Interrupt Schedule On",
+    "name": "ShowPilot - Turn Interrupt Schedule On",
     "script": "interrupt_on.php",
     "args": []
   },
   {
-    "name": "OpenFalcon - Turn Interrupt Schedule Off",
+    "name": "ShowPilot - Turn Interrupt Schedule Off",
     "script": "interrupt_off.php",
     "args": []
   }

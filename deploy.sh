@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
-# OpenFalcon Plugin — Deploy Script
-# Run on FPP (in /home/fpp/media/plugins/openfalcon) to update.
+# ShowPilot Plugin — Deploy Script
+# Run on FPP (in /home/fpp/media/plugins/showpilot) to update.
 # ============================================================
 set -e
 
@@ -19,11 +19,11 @@ sudo chmod +x scripts/*.sh commands/*.php 2>/dev/null || true
 sudo chown -R fpp:fpp .
 
 echo -e "${YELLOW}→ Restarting listener...${NC}"
-sudo pkill -f openfalcon_listener || true
+sudo pkill -f showpilot_listener || true
 sleep 1
-nohup php /home/fpp/media/plugins/openfalcon/openfalcon_listener.php > /dev/null 2>&1 &
+nohup php /home/fpp/media/plugins/showpilot/showpilot_listener.php > /dev/null 2>&1 &
 disown
 
 echo
 echo -e "${GREEN}✓ Deploy complete. Tail the log to verify:${NC}"
-echo "  tail -f /home/fpp/media/logs/openfalcon-listener.log"
+echo "  tail -f /home/fpp/media/logs/showpilot-listener.log"

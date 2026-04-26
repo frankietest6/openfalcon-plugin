@@ -1,5 +1,5 @@
 #!/bin/bash
 
-rm -f /home/fpp/media/plugins/openfalcon/openfalcon_listener.php
+rm -f /home/fpp/media/plugins/showpilot/showpilot_listener.php
 
 #fpp_uninstall

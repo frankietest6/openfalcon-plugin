@@ -1,13 +1,13 @@
 #!/bin/bash
-# OpenFalcon plugin postStart — launches the PHP listener alongside fppd.
+# ShowPilot plugin postStart — launches the PHP listener alongside fppd.
 # Started detached so it survives script exit.
 
-PLUGIN_DIR="/home/fpp/media/plugins/openfalcon"
+PLUGIN_DIR="/home/fpp/media/plugins/showpilot"
 LOG_DIR="/home/fpp/media/logs"
 mkdir -p "$LOG_DIR"
 
-# PHP listener (handles voting, queue, plugin sync to OpenFalcon)
-setsid /usr/bin/php "$PLUGIN_DIR/openfalcon_listener.php" \
+# PHP listener (handles voting, queue, plugin sync to ShowPilot)
+setsid /usr/bin/php "$PLUGIN_DIR/showpilot_listener.php" \
     </dev/null >/dev/null 2>&1 &
 
 #postStart

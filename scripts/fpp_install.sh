@@ -1,5 +1,5 @@
 #!/bin/bash
-# OpenFalcon plugin install script
+# ShowPilot plugin install script
 #
 # Runs after FPP clones the repo, AND any time the user clicks
 # "Run Install Script" or updates the plugin via FPP's plugin manager.
@@ -10,12 +10,12 @@
 
 . ${FPPDIR}/scripts/common
 
-PLUGIN_DIR="/home/fpp/media/plugins/openfalcon"
+PLUGIN_DIR="/home/fpp/media/plugins/showpilot"
 
 # Force-sync with origin/main, discarding any local changes.
 # (Plugin code lives entirely in the repo — there shouldn't be any
 #  local edits worth preserving. User config lives in
-#  /home/fpp/media/config/plugin.openfalcon, separate.)
+#  /home/fpp/media/config/plugin.showpilot, separate.)
 if [ -d "$PLUGIN_DIR/.git" ]; then
     cd "$PLUGIN_DIR"
     git fetch origin 2>&1 || echo "WARN: git fetch failed (no internet?)"

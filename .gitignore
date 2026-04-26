@@ -9,6 +9,6 @@ Thumbs.db
 *.tar.gz
 dist/
 
-# Plugin config (lives in /home/fpp/media/config/plugin.openfalcon at runtime,
+# Plugin config (lives in /home/fpp/media/config/plugin.showpilot at runtime,
 # not in this repo, but ignore here just in case)
-plugin.openfalcon
+plugin.showpilot

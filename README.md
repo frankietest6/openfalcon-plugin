@@ -1,22 +1,22 @@
-# OpenFalcon FPP Plugin
+# ShowPilot FPP Plugin
 
-The Falcon Player (FPP) plugin for [OpenFalcon](https://github.com/OFPlugin/openfalcon) — a self-hosted replacement for Remote Falcon.
+The Falcon Player (FPP) plugin for [ShowPilot](https://github.com/ShowPilotFPP/ShowPilot) — a self-hosted replacement for Remote Falcon.
 
-This plugin connects an FPP instance to your OpenFalcon server. It reports playback state to OpenFalcon and queues sequences when viewers vote or make jukebox requests.
+This plugin connects an FPP instance to your ShowPilot server. It reports playback state to ShowPilot and queues sequences when viewers vote or make jukebox requests.
 
 ## What this plugin does
 
 - Polls FPP's status API (`/api/system/status`) every second by default
-- Reports the currently playing sequence and what's coming up next to OpenFalcon
-- Asks OpenFalcon what to play next (vote winner or jukebox request)
+- Reports the currently playing sequence and what's coming up next to ShowPilot
+- Asks ShowPilot what to play next (vote winner or jukebox request)
 - Queues that sequence in FPP via `Insert Playlist Immediate` or `Insert Playlist After Current`
-- Pushes the playlist contents to OpenFalcon so the viewer page knows what songs exist
-- Heartbeats back to OpenFalcon so the admin page can show plugin connectivity
+- Pushes the playlist contents to ShowPilot so the viewer page knows what songs exist
+- Heartbeats back to ShowPilot so the admin page can show plugin connectivity
 
 ## Requirements
 
 - FPP 5.0 or newer (tested on FPP 9.5)
-- A running [OpenFalcon](https://github.com/OFPlugin/openfalcon) server reachable from the FPP
+- A running [ShowPilot](https://github.com/ShowPilotFPP/ShowPilot) server reachable from the FPP
 
 ## Install
 
@@ -29,30 +29,30 @@ This plugin connects an FPP instance to your OpenFalcon server. It reports playb
 ```bash
 # On the FPP, in a terminal:
 cd /home/fpp/media/plugins
-git clone https://github.com/OFPlugin/openfalcon-plugin.git openfalcon
-sudo chmod +x openfalcon/scripts/*.sh openfalcon/commands/*.php
-sudo chown -R fpp:fpp openfalcon
+git clone https://github.com/ShowPilotFPP/ShowPilot-plugin.git showpilot
+sudo chmod +x showpilot/scripts/*.sh showpilot/commands/*.php
+sudo chown -R fpp:fpp showpilot
 sudo reboot
 ```
 
 After reboot, the plugin should appear in **Content Setup → Plugin Manager**. Open the plugin's config page and fill in:
 
-- **Server URL**: `http://your-openfalcon-server:3100` (no trailing slash)
-- **Show Token**: copy from your OpenFalcon admin page → "Show Token (for OpenFalcon Plugin)" section
+- **Server URL**: `http://your-showpilot-server:3100` (no trailing slash)
+- **Show Token**: copy from your ShowPilot admin page → "Show Token (for ShowPilot Plugin)" section
 - **Remote Playlist**: select the FPP playlist that contains your viewer-controllable sequences
 
-Then click **Sync Playlist to OpenFalcon**. Sequences should appear in the OpenFalcon admin.
+Then click **Sync Playlist to ShowPilot**. Sequences should appear in the ShowPilot admin.
 
 ## Updating
 
 ```bash
-cd /home/fpp/media/plugins/openfalcon
+cd /home/fpp/media/plugins/showpilot
 git pull
 sudo chmod +x scripts/*.sh commands/*.php
 sudo chown -R fpp:fpp .
 # Restart the listener via FPP's Command Scheduler or:
-sudo pkill -f openfalcon_listener
-nohup php /home/fpp/media/plugins/openfalcon/openfalcon_listener.php > /dev/null 2>&1 &
+sudo pkill -f showpilot_listener
+nohup php /home/fpp/media/plugins/showpilot/showpilot_listener.php > /dev/null 2>&1 &
 disown
 ```
 
@@ -62,14 +62,14 @@ The plugin exposes several commands you can schedule via FPP's command preset/sc
 
 | Command | Effect |
 |---|---|
-| OpenFalcon - Turn Viewer Control On | Restores last active mode (Voting or Jukebox) |
-| OpenFalcon - Turn Viewer Control Off | Disables viewer control |
-| OpenFalcon - Switch to Voting Mode | Forces voting mode |
-| OpenFalcon - Switch to Jukebox Mode | Forces jukebox mode |
-| OpenFalcon - Restart Listener | Reloads plugin config |
-| OpenFalcon - Stop Listener | Stops the listener (turns plugin off) |
-| OpenFalcon - Turn Interrupt Schedule On | Force-on the "interrupt schedule" plugin setting |
-| OpenFalcon - Turn Interrupt Schedule Off | Force-off the same |
+| ShowPilot - Turn Viewer Control On | Restores last active mode (Voting or Jukebox) |
+| ShowPilot - Turn Viewer Control Off | Disables viewer control |
+| ShowPilot - Switch to Voting Mode | Forces voting mode |
+| ShowPilot - Switch to Jukebox Mode | Forces jukebox mode |
+| ShowPilot - Restart Listener | Reloads plugin config |
+| ShowPilot - Stop Listener | Stops the listener (turns plugin off) |
+| ShowPilot - Turn Interrupt Schedule On | Force-on the "interrupt schedule" plugin setting |
+| ShowPilot - Turn Interrupt Schedule Off | Force-off the same |
 
 A typical setup: schedule "Turn Viewer Control On" 30 minutes before showtime, "Turn Viewer Control Off" at end-of-night.
 
@@ -80,7 +80,7 @@ A typical setup: schedule "Turn Viewer Control On" 30 minutes before showtime, "
          └─▶ /api/command/Insert Playlist Immediate (queues viewer picks)
               ▲
               │
-[Plugin Listener (PHP)] ──HTTP──▶  [OpenFalcon Server]
+[Plugin Listener (PHP)] ──HTTP──▶  [ShowPilot Server]
    |
    └── Reads /home/fpp/media/playlists/<remote-playlist>.json
        to determine "next up" and to sync sequence list
@@ -94,7 +94,7 @@ The listener is a long-running PHP process (started by FPP's plugin system at bo
 FPP 9+ moved its plugin JS helpers. The plugin uses FPP's REST API directly to save settings. If your FPP is older than 5.0 this won't work — upgrade FPP.
 
 **CSP errors in browser console when clicking Sync**
-FPP's Apache has a strict Content-Security-Policy that blocks connections to non-whitelisted domains. Add your OpenFalcon URL:
+FPP's Apache has a strict Content-Security-Policy that blocks connections to non-whitelisted domains. Add your ShowPilot URL:
 
 ```bash
 sudo /opt/fpp/scripts/ManageApacheContentPolicy.sh add connect-src http://192.168.1.230:3100
@@ -102,10 +102,10 @@ sudo systemctl restart apache2
 ```
 
 **Listener log location**
-`/home/fpp/media/logs/openfalcon-listener.log`
+`/home/fpp/media/logs/showpilot-listener.log`
 
 ```bash
-tail -f /home/fpp/media/logs/openfalcon-listener.log
+tail -f /home/fpp/media/logs/showpilot-listener.log
 ```
 
 **Plugin queues wrong song**

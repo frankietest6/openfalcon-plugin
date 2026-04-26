@@ -1,11 +1,11 @@
 #!/usr/bin/env php
 <?php
-// OpenFalcon — Turn Viewer Control Off
+// ShowPilot — Turn Viewer Control Off
 $skipJSsettings = true;
 include_once "/opt/fpp/www/config.php";
 include_once "/opt/fpp/www/common.php";
 
-$pluginName = "openfalcon";
+$pluginName = "showpilot";
 $pluginConfigFile = $settings['configDirectory'] . "/plugin." . $pluginName;
 $pluginSettings = @parse_ini_file($pluginConfigFile);
 
