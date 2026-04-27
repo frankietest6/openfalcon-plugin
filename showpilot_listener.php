@@ -539,8 +539,26 @@ while (true) {
     // Fired regardless of whether the sequence changed — the whole point
     // is continuous fresh data, not edge-triggered like ofReportPlaying.
     // Only suppressed when nothing is playing (sequence name empty).
-    if ($currentlyPlaying !== '' && isset($fppStatus->seconds_played)) {
-        ofReportPosition($currentlyPlaying, floatval($fppStatus->seconds_played));
+    //
+    // Field selection notes: FPP exposes several time fields. We try
+    // them in order of precision:
+    //   1. seconds_elapsed — float, sub-second precision (newer FPP)
+    //   2. current_song_seconds_elapsed — alias on some FPP versions
+    //   3. seconds_played — integer-rounded (older FPP, lossy for sync)
+    // Without a sub-second source, the position has up to 1000ms of
+    // jitter, which defeats the purpose of high-cadence reporting.
+    if ($currentlyPlaying !== '') {
+        $livePos = null;
+        if (isset($fppStatus->seconds_elapsed) && is_numeric($fppStatus->seconds_elapsed)) {
+            $livePos = floatval($fppStatus->seconds_elapsed);
+        } elseif (isset($fppStatus->current_song_seconds_elapsed) && is_numeric($fppStatus->current_song_seconds_elapsed)) {
+            $livePos = floatval($fppStatus->current_song_seconds_elapsed);
+        } elseif (isset($fppStatus->seconds_played) && is_numeric($fppStatus->seconds_played)) {
+            $livePos = floatval($fppStatus->seconds_played);
+        }
+        if ($livePos !== null) {
+            ofReportPosition($currentlyPlaying, $livePos);
+        }
     }
 
     $nextScheduled = getNextScheduledSequence($fppStatus, $currentlyPlaying, $cfg['remotePlaylist']);
