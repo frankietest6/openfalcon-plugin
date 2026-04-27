@@ -63,7 +63,7 @@ $defaults = array(
     'interruptSchedule'     => 'false',
     'requestFetchTime'      => '3',
     'additionalWaitTime'    => '0',
-    'fppStatusCheckTime'    => '1',
+    'fppStatusCheckTime'    => '0.5',
     'heartbeatIntervalSec'  => '15',
     'verboseLogging'        => 'false',
     'listenerEnabled'       => 'true',
@@ -224,6 +224,27 @@ function ofReportPlaying($sequenceName, $secondsPlayed = null) {
         $payload['seconds_played'] = $secondsPlayed;
     }
     return ofHttp('POST', '/api/plugin/playing', $payload);
+}
+
+// Tell ShowPilot the live FPP playback position. Called on every loop
+// iteration (~2x/sec) so the server has near-real-time tracking of
+// where FPP's audio output actually is. Phones use this as the
+// authoritative anchor for playback sync, replacing extrapolation
+// from a fixed track-start timestamp. This is what gives speaker-
+// accurate sync — FPP's seconds_played reflects where its hardware
+// audio output is, including buffer delay, so phones aligning to
+// this number naturally match what the speakers are emitting.
+//
+// Designed to be cheap on both sides: small payload, fire-and-forget
+// (we don't care about the response). If a request times out or the
+// server is unreachable, we just skip it and try again next tick —
+// no retry, no backoff, no logging spam. The next 500ms tick has
+// fresher data anyway.
+function ofReportPosition($sequenceName, $secondsPlayed) {
+    return ofHttp('POST', '/api/plugin/position', array(
+        'sequence' => $sequenceName,
+        'position' => $secondsPlayed,
+    ));
 }
 
 // Tell ShowPilot what's scheduled next
@@ -505,6 +526,21 @@ while (true) {
                 $pendingRequests = array();
             }
         }
+    }
+
+    // Live position report — every loop iteration when audio is playing.
+    // This is the new sync mechanism: viewers receive these positions in
+    // near-real-time and use them as the authoritative anchor for audio
+    // playback alignment, instead of extrapolating from a track-start
+    // timestamp. The plugin reports "FPP is at position X.Y right now,"
+    // server stores it with arrival timestamp, viewers compute their
+    // target position from (X.Y + elapsed_since_arrival).
+    //
+    // Fired regardless of whether the sequence changed — the whole point
+    // is continuous fresh data, not edge-triggered like ofReportPlaying.
+    // Only suppressed when nothing is playing (sequence name empty).
+    if ($currentlyPlaying !== '' && isset($fppStatus->seconds_played)) {
+        ofReportPosition($currentlyPlaying, floatval($fppStatus->seconds_played));
     }
 
     $nextScheduled = getNextScheduledSequence($fppStatus, $currentlyPlaying, $cfg['remotePlaylist']);
