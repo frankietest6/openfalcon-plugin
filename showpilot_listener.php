@@ -430,6 +430,11 @@ $pendingRequests = array();   // Sequences we've queued/inserted that haven't
 $lastHeartbeat = 0;
 $sequencesClearedWhenIdle = false;
 
+// Mode cache for the queue-decision logic. Refreshed periodically so we
+// don't round-trip on every loop iteration just to know voting vs jukebox.
+$cachedMode = null;
+$cachedModeAt = 0;
+
 while (true) {
     // Refresh settings each loop — allows the FPP UI to change things live
     $s = parse_ini_file($pluginConfigFile);
@@ -562,12 +567,37 @@ while (true) {
     }
 
     // Check whether we should queue a viewer-selected sequence
+    //
+    // Voting mode is round-based: a winner is decided per-song, and the
+    // winner becomes the NEXT song. Continuously polling and inserting
+    // would (a) advance the round on the first vote that comes in, and
+    // (b) potentially interrupt the current song mid-way. Both wrong.
+    // So in voting mode, we behave like non-interrupt regardless of
+    // the interruptSchedule config flag.
+    //
+    // Jukebox mode keeps interruptSchedule as configured — that's the
+    // mode where "play this song right now" makes sense.
+    //
+    // To know which mode we're in without a round-trip on every loop,
+    // we cache the last-seen mode. Refresh once per minute or when we
+    // need to fetch state for a queue decision anyway. Cache vars are
+    // declared in outer scope (above the while loop).
+    if ($cachedMode === null || (time() - $cachedModeAt) > 60) {
+        $modeState = ofGetState();
+        if ($modeState !== null && isset($modeState->mode)) {
+            $cachedMode = $modeState->mode;
+            $cachedModeAt = time();
+        }
+    }
+    $isVotingMode = ($cachedMode === 'VOTING');
+    $effectiveInterrupt = $cfg['interruptSchedule'] && !$isVotingMode;
+
     $shouldCheck = false;
-    if ($cfg['interruptSchedule']) {
-        // Interrupt mode: check on every loop when not currently playing from remote playlist
+    if ($effectiveInterrupt) {
+        // Interrupt mode (jukebox only): check on every loop when not currently playing from remote playlist
         $shouldCheck = true;
     } else {
-        // Non-interrupt: check only when current song is about to end
+        // Non-interrupt OR voting mode: only check when current song is about to end
         $secondsRemaining = intVal($fppStatus->seconds_remaining ?? 999);
         if ($secondsRemaining <= $cfg['requestFetchTime']) {
             $shouldCheck = true;
@@ -575,7 +605,7 @@ while (true) {
     }
 
     // Avoid queueing twice for the same currently-playing sequence in non-interrupt mode
-    if ($shouldCheck && !$cfg['interruptSchedule']) {
+    if ($shouldCheck && !$effectiveInterrupt) {
         if ($currentlyPlaying === $lastQueuedForSequence) {
             $sinceQueue = time() - $lastQueuedAt;
             if ($sinceQueue < ($cfg['requestFetchTime'] + $cfg['additionalWaitTime'] + 2)) {
@@ -614,19 +644,25 @@ while (true) {
                 $haveQueuedRequests = count($pendingRequests) > 0;
                 $shouldQueue = $within_cooldown || $isViewerRequestPlaying || $haveQueuedRequests;
 
-                if ($cfg['interruptSchedule'] && !$shouldQueue) {
+                if ($effectiveInterrupt && !$shouldQueue) {
                     logEntry("Interrupting schedule with: $nextSeq at playlist index $nextIdx");
                     insertPlaylistImmediate($cfg['remotePlaylist'], $nextIdx);
                     $lastImmediateAt = time();
                     $pendingRequests[] = $nextSeq;
                 } else {
-                    $reason = !$cfg['interruptSchedule']
-                        ? "non-interrupt mode"
-                        : ($isViewerRequestPlaying
-                            ? "viewer request playing"
-                            : ($haveQueuedRequests
-                                ? "requests still in queue"
-                                : "cooldown after recent insert"));
+                    // Voting mode always lands here (effectiveInterrupt is
+                    // false for voting), as does the configured non-interrupt
+                    // case for jukebox. The reason string explains why we
+                    // chose the queued path so logs are easy to follow.
+                    $reason = $isVotingMode
+                        ? "voting mode (winner queued for after current song)"
+                        : (!$cfg['interruptSchedule']
+                            ? "non-interrupt mode"
+                            : ($isViewerRequestPlaying
+                                ? "viewer request playing"
+                                : ($haveQueuedRequests
+                                    ? "requests still in queue"
+                                    : "cooldown after recent insert")));
                     logEntry("Queueing after current ($reason): $nextSeq at playlist index $nextIdx");
                     insertPlaylistAfterCurrent($cfg['remotePlaylist'], $nextIdx);
                     $pendingRequests[] = $nextSeq;
@@ -634,7 +670,7 @@ while (true) {
                 $lastQueuedForSequence = $currentlyPlaying;
                 $lastQueuedAt = time();
 
-                if (!$cfg['interruptSchedule']) {
+                if (!$effectiveInterrupt) {
                     $waitTime = $cfg['requestFetchTime'] + $cfg['additionalWaitTime'];
                     logEntry("Sleeping $waitTime seconds after queue");
                     sleep($waitTime);
@@ -646,7 +682,7 @@ while (true) {
                 $lastQueuedAt = time();
             } else {
                 // No winner/request. Mark checked to prevent re-polling the same song.
-                if (!$cfg['interruptSchedule']) {
+                if (!$effectiveInterrupt) {
                     $lastQueuedForSequence = $currentlyPlaying;
                     $lastQueuedAt = time();
                 }
