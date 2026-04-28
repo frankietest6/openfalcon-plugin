@@ -1045,6 +1045,23 @@ if (!empty(trim((string)$ps))) {
       throw new Error('manifest fetch failed (' + manifestRes.status + ')');
     }
     const manifestData = await manifestRes.json();
+
+    // Server's "audio_enabled" master switch (ShowPilot v0.28.0+).
+    // When the admin disables audio for the show — typical reason: they
+    // deliver audio via PulseMesh, FM, or Icecast and don't want
+    // ShowPilot hosting it — the manifest response sets audioEnabled
+    // to false. Skip the entire upload phase: no point reading 30
+    // 5MB files off the FPP SD card, hashing them, and shipping them
+    // to a server that's just going to reject them with 403.
+    //
+    // Note: older ShowPilot versions don't include audioEnabled in the
+    // response at all. `=== false` (not `!= true`) means we treat a
+    // missing field as enabled, preserving the existing behavior for
+    // pre-v0.28.0 servers.
+    if (manifestData.audioEnabled === false) {
+      return ' · audio disabled on server (skipped)';
+    }
+
     const haveHashes = new Set(manifestData.haveHashes || []);
 
     // Step 2: for each audio file, hash it and decide upload vs link vs skip.
