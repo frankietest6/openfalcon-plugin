@@ -1336,6 +1336,7 @@ if (!empty(trim((string)$ps))) {
     if (manifestData.audioEnabled === false) {
       return ' · audio disabled on server (skipped)';
     }
+    
     const haveHashes = new Set(manifestData.haveHashes || []);
 
     let uploaded = 0;
