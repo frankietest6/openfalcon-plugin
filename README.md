@@ -1,5 +1,7 @@
 # ShowPilot FPP Plugin
 
+[![Discord](https://img.shields.io/badge/Discord-Join%20the%20chat-5865F2?logo=discord&logoColor=white)](https://discord.gg/UpmcXmWfN9) [![Facebook](https://img.shields.io/badge/Facebook-Join%20the%20group-1877F2?logo=facebook&logoColor=white)](https://www.facebook.com/groups/showpilot)
+
 The Falcon Player (FPP) plugin for [ShowPilot](https://github.com/ShowPilotFPP/ShowPilot) — a self-hosted replacement for Remote Falcon.
 
 This plugin connects an FPP instance to your ShowPilot server. It reports playback state to ShowPilot and queues sequences when viewers vote or make jukebox requests.
