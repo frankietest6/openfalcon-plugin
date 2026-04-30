@@ -39,6 +39,10 @@ $allowedPaths = [
 ];
 
 $path   = $_GET['path'] ?? '';
+$path = str_replace('\\', '/', $path);
+if ($path !== '' && $path[0] !== '/') {
+    $path = '/' . $path;
+}
 $method = $_SERVER['REQUEST_METHOD'];
 if (!in_array($path, $allowedPaths, true)) {
     http_response_code(403);
