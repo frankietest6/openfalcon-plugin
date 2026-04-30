@@ -43,6 +43,17 @@ $path = str_replace('\\', '/', $path);
 if ($path !== '' && $path[0] !== '/') {
     $path = '/' . $path;
 }
+
+// The JS passes hash/mediaName as query params embedded in the path string
+// (e.g. /api/plugin/audio-cache/upload?hash=...&mediaName=...).
+// Strip the query portion before the allow-list check and parse it as a
+// fallback source for those params so the proxy picks them up correctly.
+$embeddedQuery = '';
+if (strpos($path, '?') !== false) {
+    [$path, $embeddedQuery] = explode('?', $path, 2);
+}
+parse_str($embeddedQuery, $embeddedParams);
+
 $method = $_SERVER['REQUEST_METHOD'];
 if (!in_array($path, $allowedPaths, true)) {
     http_response_code(403);
