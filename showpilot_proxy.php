@@ -87,8 +87,12 @@ if ($body !== null) {
 $queryForward = '';
 if ($path === '/api/plugin/audio-cache/upload') {
     $params = [];
-    if (isset($_GET['hash']))      $params[] = 'hash='      . rawurlencode($_GET['hash']);
-    if (isset($_GET['mediaName'])) $params[] = 'mediaName=' . rawurlencode($_GET['mediaName']);
+    // Accept hash/mediaName from either their own $_GET keys (future-proof)
+    // or from the query string that was embedded in the path param (current JS behaviour).
+    $hash      = $_GET['hash']      ?? $embeddedParams['hash']      ?? '';
+    $mediaName = $_GET['mediaName'] ?? $embeddedParams['mediaName'] ?? '';
+    if ($hash)      $params[] = 'hash='      . rawurlencode($hash);
+    if ($mediaName) $params[] = 'mediaName=' . rawurlencode($mediaName);
     if ($params) $queryForward = '?' . implode('&', $params);
 }
 
