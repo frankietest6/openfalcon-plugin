@@ -752,8 +752,7 @@ if (!empty(trim((string)$ps))) {
           <label class="of-toggle">
             <input type="checkbox" id="interruptSchedule" <?php echo (val($pluginSettings, 'interruptSchedule'
               )==='true' ) ? 'checked' : '' ; ?>
-            onchange="SetPluginSetting('
-            <?php echo $pluginName; ?>','interruptSchedule',encodeURIComponent(this.checked ? 'true' : 'false'));" />
+            onchange="SetPluginSetting('<?php echo $pluginName; ?>','interruptSchedule',encodeURIComponent(this.checked ? 'true' : 'false'));" />
             <span class="of-toggle-slider"></span>
           </label>
         </div>
@@ -914,8 +913,7 @@ if (!empty(trim((string)$ps))) {
           <label class="of-toggle">
             <input type="checkbox" id="verboseLogging" <?php echo (val($pluginSettings, 'verboseLogging' )==='true' )
               ? 'checked' : '' ; ?>
-            onchange="SetPluginSetting('
-            <?php echo $pluginName; ?>','verboseLogging',encodeURIComponent(this.checked ? 'true' : 'false'));" />
+            onchange="SetPluginSetting('<?php echo $pluginName; ?>','verboseLogging',encodeURIComponent(this.checked ? 'true' : 'false'));" />
             <span class="of-toggle-slider"></span>
           </label>
         </div>
@@ -1652,9 +1650,15 @@ if (!empty(trim((string)$ps))) {
     }
     if (!confirm('Save this config and overwrite the current one?')) return;
     try {
+      // FPP's /api/configfile POST handler explicitly requires
+      // Content-Type: text/html (per /apihelp.php: "Content-type must
+      // equal 'text/html' even if content is not HTML"). With anything
+      // else, the request returns 200 OK but the file is not written —
+      // which is exactly what users were seeing: Save Config "succeeded"
+      // and then Load Config showed the prior contents on next reload.
       const res = await fetch('/api/configfile/plugin.showpilot', {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
+        headers: { 'Content-Type': 'text/html' },
         body: content,
       });
       if (res.ok) {
