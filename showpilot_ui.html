@@ -1030,15 +1030,15 @@ if (!empty(trim((string)$ps))) {
   }
 
   // ============================================================
-  // FPP setting save (REST API)
+  // FPP setting save
   // ============================================================
   async function SetPluginSetting(plugin, key, value) {
     const rawValue = decodeURIComponent(value);
     try {
-      const res = await fetch('/api/plugin/' + encodeURIComponent(plugin) + '/settings/' + encodeURIComponent(key), {
+      const res = await fetch('/plugin.php?_menu=content&plugin=' + encodeURIComponent(plugin) + '&page=showpilot_config.php&nopage=1', {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: rawValue,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ key, value: rawValue }),
       });
       if (!res.ok) console.error('Save failed:', res.status, await res.text());
     } catch (err) {
@@ -1636,7 +1636,7 @@ if (!empty(trim((string)$ps))) {
   async function loadRawConfig() {
     const out = document.getElementById('rawConfig');
     try {
-      const res = await fetch('/api/configfile/plugin.showpilot');
+      const res = await fetch('/plugin.php?_menu=content&plugin=showpilot&page=showpilot_config.php&nopage=1&action=raw');
       if (!res.ok) {
         setStatus('rawConfigStatus', 'Load failed: HTTP ' + res.status, 'error');
         return;
@@ -1656,16 +1656,12 @@ if (!empty(trim((string)$ps))) {
     }
     if (!confirm('Save this config and overwrite the current one?')) return;
     try {
-      // FPP's /api/configfile POST handler explicitly requires
-      // Content-Type: text/html (per /apihelp.php: "Content-type must
-      // equal 'text/html' even if content is not HTML"). With anything
-      // else, the request returns 200 OK but the file is not written —
-      // which is exactly what users were seeing: Save Config "succeeded"
-      // and then Load Config showed the prior contents on next reload.
-      const res = await fetch('/api/configfile/plugin.showpilot', {
+      // Use the plugin-local bridge here too, so raw config edits follow
+      // the same save path as the normal fields on every supported FPP.
+      const res = await fetch('/plugin.php?_menu=content&plugin=showpilot&page=showpilot_config.php&nopage=1&action=raw', {
         method: 'POST',
-        headers: { 'Content-Type': 'text/html' },
-        body: content,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ content }),
       });
       if (res.ok) {
         setStatus('rawConfigStatus', '✓ Saved. Restart listener for changes to take effect.', 'success');
