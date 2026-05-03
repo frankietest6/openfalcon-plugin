@@ -1,11 +1,9 @@
 <?php
 // ShowPilot config bridge. FPP's plugin-settings REST endpoints have changed
-// across versions; WriteSettingToFile has stayed compatible with the plugin
-// config file format the listener already reads.
+// across versions, so this endpoint updates the plugin config file directly.
 header('Cache-Control: no-store');
 $skipJSsettings = true;
 include_once "/opt/fpp/www/config.php";
-include_once "/opt/fpp/www/common.php";
 
 $pluginName = "showpilot";
 $pluginConfigFile = $settings['configDirectory'] . "/plugin." . $pluginName;
@@ -37,6 +35,31 @@ function ensureConfigFile($path) {
         @chmod($path, 0644);
     }
     return file_exists($path) && is_readable($path);
+}
+
+function writePluginSetting($path, $key, $value) {
+    $encodedValue = urlencode($value);
+    $lines = file_exists($path) ? file($path, FILE_IGNORE_NEW_LINES) : array();
+    if ($lines === false) {
+        $lines = array();
+    }
+
+    $written = false;
+    for ($i = 0; $i < count($lines); $i++) {
+        if (preg_match('/^\s*' . preg_quote($key, '/') . '\s*=/', $lines[$i])) {
+            $lines[$i] = $key . ' = ' . $encodedValue;
+            $written = true;
+            break;
+        }
+    }
+
+    if (!$written) {
+        $lines[] = $key . ' = ' . $encodedValue;
+    }
+
+    $ok = @file_put_contents($path, implode("\n", $lines) . "\n");
+    @chmod($path, 0644);
+    return $ok !== false;
 }
 
 $action = $_GET['action'] ?? '';
@@ -86,5 +109,7 @@ if (!ensureConfigFile($pluginConfigFile)) {
     respondJson(500, array('error' => 'Could not create plugin config'));
 }
 
-WriteSettingToFile($key, urlencode($value), $pluginName);
+if (!writePluginSetting($pluginConfigFile, $key, $value)) {
+    respondJson(500, array('error' => 'Could not write plugin config'));
+}
 respondJson(200, array('ok' => true));
