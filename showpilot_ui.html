@@ -12,9 +12,15 @@ $pluginSettings = @parse_ini_file($pluginConfigFile) ?: array();
 require_once __DIR__ . '/version.php';
 $pluginVersion = $PLUGIN_VERSION;
 
-// Helper for safe display of saved values
+// Helper for safe display of saved values. Plugin config values may be
+// stored URL-encoded (when saved through FPP's API or showpilot_config.php)
+// or plain (when saved through the configfile fallback / Developer raw
+// editor). Decode only when we see %XX patterns; otherwise leave as-is so
+// plain values containing '+' don't get mangled into spaces by urldecode.
 function val($settings, $key, $default = '') {
-    return urldecode($settings[$key] ?? $default);
+    $v = $settings[$key] ?? $default;
+    if ($v === '' || $v === null) return $v;
+    return preg_match('/%[0-9a-fA-F]{2}/', $v) ? urldecode($v) : $v;
 }
 
 // Determine if listener is running
@@ -1065,12 +1071,55 @@ if (!empty(trim((string)$ps))) {
     throw new Error('Unable to load plugin config');
   }
 
+  // Save a full plugin config file. FPP's /api/configfile/ handler is the
+  // primary path, but it has a nasty quirk: when fopen() fails on the target
+  // (e.g. config file not writable by the web user, which happens on older
+  // FPP installs), the handler returns HTTP 200 with a JSON body of
+  //   {"Status":"Error","Message":"Unable to open file for writing"}
+  // — i.e. callers checking only `res.ok` will think the save succeeded.
+  // We parse the Status field, and on any failure (HTTP error, Status:Error,
+  // or non-JSON response) we fall back to showpilot_config.php?action=raw,
+  // which writes the file directly via the plugin's own PHP. Returns a
+  // normalized object so callers don't have to think about which path won.
   async function savePluginConfigText(content) {
-    return await fetch('/api/configfile/plugin.showpilot?_showpilot_ts=' + Date.now(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/html' },
-      body: content,
-    });
+    try {
+      const res = await fetch('/api/configfile/plugin.showpilot?_showpilot_ts=' + Date.now(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/html' },
+        body: content,
+      });
+      if (res.ok) {
+        // Try to parse Status. If body isn't JSON or doesn't say Error,
+        // treat as success (older FPP versions returned plain "OK").
+        let bodyText = '';
+        try { bodyText = await res.text(); } catch (e) {}
+        let status = null;
+        try { status = JSON.parse(bodyText); } catch (e) {}
+        if (!status || status.Status !== 'Error') {
+          return { ok: true, via: 'configfile' };
+        }
+        console.warn('FPP configfile API returned Status:Error, falling back:', status.Message || '');
+      } else {
+        console.warn('FPP configfile API returned HTTP', res.status, '— falling back');
+      }
+    } catch (err) {
+      console.warn('FPP configfile API threw, falling back:', err);
+    }
+
+    // Fallback: bypass endpoint. Sends body as form-urlencoded `content=...`
+    // because showpilot_config.php parses it with parse_str().
+    const fbRes = await fetch(
+      '/plugin.php?_menu=content&plugin=showpilot&page=showpilot_config.php&nopage=1&action=raw&_showpilot_ts=' + Date.now(),
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'content=' + encodeURIComponent(content),
+      }
+    );
+    if (!fbRes.ok) {
+      throw new Error('Both configfile API and fallback failed (fallback HTTP ' + fbRes.status + ')');
+    }
+    return { ok: true, via: 'fallback' };
   }
 
   async function pluginSettingPersisted(key, value) {
@@ -1088,7 +1137,7 @@ if (!empty(trim((string)$ps))) {
     const nextConfig = updatePluginConfigText(await fetchPluginConfigText(), key, value);
     const saveRes = await savePluginConfigText(nextConfig);
     if (!saveRes.ok) {
-      throw new Error('Config file save failed: HTTP ' + saveRes.status);
+      throw new Error('Config file save failed');
     }
 
     if (!(await pluginSettingPersisted(key, value))) {
@@ -1723,11 +1772,8 @@ if (!empty(trim((string)$ps))) {
     if (!confirm('Save this config and overwrite the current one?')) return;
     try {
       const res = await savePluginConfigText(content);
-      if (res.ok) {
-        setStatus('rawConfigStatus', '✓ Saved. Restart listener for changes to take effect.', 'success');
-      } else {
-        setStatus('rawConfigStatus', 'Save failed: HTTP ' + res.status, 'error');
-      }
+      const note = res.via === 'fallback' ? ' (via fallback)' : '';
+      setStatus('rawConfigStatus', '✓ Saved' + note + '. Restart listener for changes to take effect.', 'success');
     } catch (err) {
       setStatus('rawConfigStatus', 'Save failed: ' + err.message, 'error');
     }

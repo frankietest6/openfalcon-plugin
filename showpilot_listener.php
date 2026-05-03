@@ -39,6 +39,30 @@ function logEntry_verbose($data) {
 }
 
 // ============================================================
+// smartDecode — tolerant decoder for plugin config values
+// ============================================================
+// The plugin has THREE write paths to plugin.showpilot, and they don't all
+// use the same encoding:
+//   1. FPP's native /api/plugin/<plugin>/settings/<key>     → URL-encoded
+//   2. showpilot_config.php (per-key bypass endpoint)       → URL-encoded
+//   3. savePluginSettingViaConfigFile / Developer raw editor → plain text
+// A blind urldecode() works fine for path 1 & 2, and is mostly a no-op for
+// path 3 — except for plain values that happen to contain '+' (which
+// urldecode turns into a space) or '%XX' sequences (decoded unexpectedly).
+// We detect URL-encoding by looking for %XX patterns; if absent, we assume
+// the value is already plain and return it as-is. This makes the listener
+// tolerant of all three write paths, including users hand-editing the config
+// in Developer mode.
+function smartDecode($value) {
+    if ($value === null || $value === '') return $value;
+    // %XX with hex digits is the unambiguous signal of URL-encoding.
+    if (preg_match('/%[0-9a-fA-F]{2}/', $value)) {
+        return urldecode($value);
+    }
+    return $value;
+}
+
+// ============================================================
 // Init defaults
 // ============================================================
 
@@ -82,15 +106,15 @@ function loadRuntimeSettings() {
     $s = parse_ini_file($pluginConfigFile);
     if ($s === false) return null;
     return array(
-        'serverUrl'          => rtrim(urldecode($s['serverUrl']), '/'),
-        'showToken'          => urldecode($s['showToken']),
-        'remotePlaylist'     => urldecode($s['remotePlaylist']),
-        'interruptSchedule'  => urldecode($s['interruptSchedule']) === 'true',
-        'requestFetchTime'   => max(1, intVal(urldecode($s['requestFetchTime']))),
-        'additionalWaitTime' => max(0, intVal(urldecode($s['additionalWaitTime']))),
-        'fppStatusCheckTime' => max(0.5, floatval(urldecode($s['fppStatusCheckTime']))),
-        'heartbeatIntervalSec' => max(5, intVal(urldecode($s['heartbeatIntervalSec']))),
-        'verboseLogging'     => urldecode($s['verboseLogging']) === 'true',
+        'serverUrl'          => rtrim(smartDecode($s['serverUrl']), '/'),
+        'showToken'          => smartDecode($s['showToken']),
+        'remotePlaylist'     => smartDecode($s['remotePlaylist']),
+        'interruptSchedule'  => smartDecode($s['interruptSchedule']) === 'true',
+        'requestFetchTime'   => max(1, intVal(smartDecode($s['requestFetchTime']))),
+        'additionalWaitTime' => max(0, intVal(smartDecode($s['additionalWaitTime']))),
+        'fppStatusCheckTime' => max(0.5, floatval(smartDecode($s['fppStatusCheckTime']))),
+        'heartbeatIntervalSec' => max(5, intVal(smartDecode($s['heartbeatIntervalSec']))),
+        'verboseLogging'     => smartDecode($s['verboseLogging']) === 'true',
     );
 }
 
@@ -444,8 +468,8 @@ while (true) {
         continue;
     }
 
-    $enabled = urldecode($s['listenerEnabled']) === 'true';
-    $restarting = urldecode($s['listenerRestarting']) === 'true';
+    $enabled = smartDecode($s['listenerEnabled']) === 'true';
+    $restarting = smartDecode($s['listenerRestarting']) === 'true';
 
     if ($restarting) {
         WriteSettingToFile("listenerEnabled", urlencode("true"), $pluginName);

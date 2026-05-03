@@ -15,8 +15,16 @@ if (!$pluginSettings) {
     echo json_encode(['error' => 'Could not read plugin config']);
     exit;
 }
-$serverUrl = rtrim(urldecode($pluginSettings['serverUrl'] ?? ''), '/');
-$showToken  = urldecode($pluginSettings['showToken'] ?? '');
+// Plugin config values may be stored URL-encoded or plain depending on
+// which save path wrote them. Decode only when we see %XX patterns so that
+// plain values containing '+' don't get mangled. See showpilot_listener.php
+// smartDecode() for full rationale.
+$smartDecode = function($v) {
+    if ($v === '' || $v === null) return $v;
+    return preg_match('/%[0-9a-fA-F]{2}/', $v) ? urldecode($v) : $v;
+};
+$serverUrl = rtrim($smartDecode($pluginSettings['serverUrl'] ?? ''), '/');
+$showToken = $smartDecode($pluginSettings['showToken'] ?? '');
 if (empty($serverUrl) || empty($showToken)) {
     http_response_code(400);
     echo json_encode(['error' => 'Server URL or Show Token not configured']);
