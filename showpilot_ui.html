@@ -1032,13 +1032,12 @@ if (!empty(trim((string)$ps))) {
   // ============================================================
   // FPP setting save
   // ============================================================
-  function encodePluginConfigValue(value) {
-    return encodeURIComponent(value);
+  function quotePluginConfigValue(value) {
+    return String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   }
 
   function updatePluginConfigText(content, key, value) {
-    const encodedValue = encodePluginConfigValue(value);
-    const line = key + ' = "' + encodedValue + '"';
+    const line = key + ' = "' + quotePluginConfigValue(value) + '"';
     const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const re = new RegExp('^\\s*' + escapedKey + '\\s*=.*$', 'm');
     if (re.test(content)) {
@@ -1078,7 +1077,7 @@ if (!empty(trim((string)$ps))) {
     try {
       const savedConfig = await fetchPluginConfigText();
       const savedValue = parsePluginConfigValue(savedConfig, key);
-      return savedValue === value || savedValue === encodePluginConfigValue(value);
+      return savedValue === value || savedValue === encodeURIComponent(value);
     } catch (err) {
       console.warn('Could not verify plugin setting save:', err);
       return false;
