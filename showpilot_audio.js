@@ -119,10 +119,14 @@ function handleFppEvent(line) {
 }
 
 function startFifoListener() {
-  // Create FIFO if it doesn't exist
+  // Create FIFO if it doesn't exist. Mode 660 (owner+group rw only) — the
+  // C++ MultiSync plugin (writer, runs inside fppd) and this daemon
+  // (reader, spawned by postStart.sh under the same user) never need
+  // world access to this pipe. Matches the mode FPPShowPilotSync.cpp uses
+  // when it creates the FIFO first.
   try {
     execSync(`[ -p ${FIFO_PATH} ] || mkfifo ${FIFO_PATH}`);
-    execSync(`chmod 666 ${FIFO_PATH}`);
+    execSync(`chmod 660 ${FIFO_PATH}`);
   } catch (_) {}
 
   let buf = '';

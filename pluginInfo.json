@@ -1,5 +1,5 @@
 {
-	"repoName": "showpilot",
+	"repoName": "ShowPilot-plugin",
 	"name": "ShowPilot Plugin",
 	"author": "ShowPilot Project",
 	"description": "Connects FPP to a self-hosted ShowPilot server for audio playback, viewer voting, and jukebox control.",
@@ -8,6 +8,8 @@
 	"bugURL": "https://github.com/ShowPilotFPP/ShowPilot-plugin/issues",
 	"iconURL": "https://raw.githubusercontent.com/ShowPilotFPP/ShowPilot-plugin/main/icon.png",
 	"allowUpdates": 1,
+	"minMemoryMB": 256,
+	"minCpuCores": 1,
 	"versions": [
 		{
 			"minFPPVersion": "5.0",

@@ -11,6 +11,25 @@ CONFIG_FILE="/home/fpp/media/config/plugin.showpilot"
 LOCK_FILE="/tmp/showpilot-poststart.lock"
 mkdir -p "$LOG_DIR"
 
+# Poll for a PID to exit instead of a flat sleep — returns as soon as the
+# process is actually gone, capped at $2 tenths-of-a-second.
+wait_for_pid_exit() {
+    local pid="$1" max_ticks="$2" ticks=0
+    while kill -0 "$pid" 2>/dev/null && [ "$ticks" -lt "$max_ticks" ]; do
+        sleep 0.1
+        ticks=$((ticks + 1))
+    done
+}
+
+# Same idea for pkill'd processes we don't have a PID for — poll by pattern.
+wait_for_pattern_exit() {
+    local pattern="$1" max_ticks="$2" ticks=0
+    while pgrep -f "$pattern" >/dev/null 2>&1 && [ "$ticks" -lt "$max_ticks" ]; do
+        sleep 0.1
+        ticks=$((ticks + 1))
+    done
+}
+
 # Guard against double-invocation — FPP calls postStart twice on some versions.
 # If another instance of this script is already running, exit immediately.
 if [ -f "$LOCK_FILE" ]; then
@@ -41,23 +60,29 @@ if [ -f /tmp/showpilot-audio.pid ]; then
     OLD_PID=$(cat /tmp/showpilot-audio.pid 2>/dev/null)
     if [ -n "$OLD_PID" ] && kill -0 "$OLD_PID" 2>/dev/null; then
         kill "$OLD_PID" 2>/dev/null
-        sleep 0.5
+        wait_for_pid_exit "$OLD_PID" 5   # poll up to 0.5s instead of a flat sleep
         kill -9 "$OLD_PID" 2>/dev/null || true
     fi
     rm -f /tmp/showpilot-audio.pid
 fi
 pkill -f "php $PLUGIN_DIR/showpilot_listener.php" 2>/dev/null
 pkill -f "node $PLUGIN_DIR/showpilot_audio.js" 2>/dev/null
-sleep 1
+wait_for_pattern_exit "php $PLUGIN_DIR/showpilot_listener.php" 10   # poll up to 1s instead of a flat sleep
+wait_for_pattern_exit "node $PLUGIN_DIR/showpilot_audio.js" 10
 
 # 3. Spawn listener
 setsid /usr/bin/php "$PLUGIN_DIR/showpilot_listener.php" \
     </dev/null >/dev/null 2>&1 &
 
-# ---- Build C++ MultiSync plugin if not already built ----
-if [ ! -f "$PLUGIN_DIR/libshowpilot.so" ] && [ -f "$PLUGIN_DIR/Makefile" ] && [ -d "/opt/fpp/src" ]; then
-    echo "Building ShowPilot MultiSync plugin..."
-    cd "$PLUGIN_DIR" && make 2>/dev/null && echo "ShowPilot MultiSync plugin built" || true
+# ---- C++ MultiSync plugin is built during install/upgrade only ----
+# fpp_install.sh already builds libshowpilot.so with `make`. Running that
+# build synchronously here too, on every fppd startup, needlessly delays
+# boot for no benefit (nothing changes between fppd restarts unless the
+# plugin itself was reinstalled, which already rebuilds it). If it's
+# missing, something went wrong at install time — log it and move on
+# instead of blocking startup on a build.
+if [ ! -f "$PLUGIN_DIR/libshowpilot.so" ] && [ -f "$PLUGIN_DIR/Makefile" ]; then
+    echo "WARN: libshowpilot.so not found — MultiSync plugin was not built during install. Re-run the plugin's Install Script from FPP's Plugin Manager to rebuild it."
 fi
 
 # 4. Spawn audio daemon if Node 18+ available

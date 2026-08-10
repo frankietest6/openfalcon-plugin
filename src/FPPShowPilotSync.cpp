@@ -88,14 +88,17 @@ private:
 
     void initFifo()
     {
-        // Create FIFO if it doesn't exist
+        // Create FIFO if it doesn't exist. Mode 0660 (owner+group rw, no
+        // world access) rather than 0666 — fppd (writer) and the Node audio
+        // daemon (reader, spawned by postStart.sh under the same user) never
+        // need anyone else on the host to touch this pipe.
         struct stat st;
         if (stat(SHOWPILOT_FIFO_PATH, &st) != 0) {
-            if (mkfifo(SHOWPILOT_FIFO_PATH, 0666) != 0) {
+            if (mkfifo(SHOWPILOT_FIFO_PATH, 0660) != 0) {
                 LogWarn(VB_PLUGIN, "ShowPilot: mkfifo failed: %s\n", strerror(errno));
             }
         }
-        chmod(SHOWPILOT_FIFO_PATH, 0666);
+        chmod(SHOWPILOT_FIFO_PATH, 0660);
 
         // Open non-blocking so we don't block if daemon isn't reading
         m_fd = open(SHOWPILOT_FIFO_PATH, O_WRONLY | O_NONBLOCK);

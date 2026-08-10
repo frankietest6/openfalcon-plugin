@@ -11,6 +11,15 @@
 # Required" banner; user clicks it; fppd cycles; postStop kills the listener;
 # postStart spawns a fresh one with the new code. Same pattern Remote Falcon
 # uses — proven to work reliably across FPP versions.
+#
+# set -e / pipefail: without these, any command below can fail and the
+# script just keeps going, reporting "success" to FPP's plugin manager even
+# though (say) the git sync or a permissions fix silently didn't happen.
+# Steps that are meant to fail soft (network hiccups, optional Node/C++
+# build steps) are explicitly guarded with `|| true` / a WARN echo below —
+# everything else is now fail-fast on purpose.
+set -e
+set -o pipefail
 
 . ${FPPDIR}/scripts/common
 
@@ -27,20 +36,21 @@ if [ -d "$PLUGIN_DIR/.git" ]; then
     git reset --hard origin/main 2>&1 || echo "WARN: git reset failed"
 fi
 
-# Ensure correct ownership
-chown -R fpp:fpp "$PLUGIN_DIR" 2>/dev/null
+# Ensure correct ownership. Not fatal if it fails (e.g. unexpected FS
+# permissions on some hosts) — the rest of the install can still succeed.
+chown -R fpp:fpp "$PLUGIN_DIR" 2>/dev/null || true
 
 # Older FPP installs can leave plugin config owned by the listener user only.
 # The web UI/API must also be able to update it when settings are changed.
-touch "$CONFIG_FILE" 2>/dev/null
-chown fpp:fpp "$CONFIG_FILE" 2>/dev/null
-chmod 666 "$CONFIG_FILE" 2>/dev/null
+touch "$CONFIG_FILE" 2>/dev/null || true
+chown fpp:fpp "$CONFIG_FILE" 2>/dev/null || true
+chmod 666 "$CONFIG_FILE" 2>/dev/null || true
 
 # Make all command scripts and lifecycle scripts executable so FPP can run them.
 # (git-tracked exec bit doesn't always survive every install path, so we do this
 #  explicitly here to be safe.)
-chmod +x "$PLUGIN_DIR/commands/"*.php 2>/dev/null
-chmod +x "$PLUGIN_DIR/scripts/"*.sh 2>/dev/null
+chmod +x "$PLUGIN_DIR/commands/"*.php 2>/dev/null || true
+chmod +x "$PLUGIN_DIR/scripts/"*.sh 2>/dev/null || true
 
 # ---- Node.js installation ----
 # Required for the ShowPilot audio daemon (showpilot_audio.js).
@@ -60,14 +70,17 @@ if [ "$NODE_OK" = "0" ]; then
     echo "Installing Node.js 22..."
     # Add the NodeSource apt repo directly (GPG key + sources.list.d entry)
     # instead of piping their setup script into a shell.
-    apt-get install -y ca-certificates gnupg
-    mkdir -p /etc/apt/keyrings
+    # This whole block is best-effort: a network hiccup or apt issue here
+    # shouldn't abort the rest of the install (C++ plugin build, restart
+    # flag) — we warn and continue via the command-v check right below.
+    apt-get install -y ca-certificates gnupg || true
+    mkdir -p /etc/apt/keyrings || true
     curl -fsSL --connect-timeout 10 --max-time 30 https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
-        | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+        | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg || true
     echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main" \
-        > /etc/apt/sources.list.d/nodesource.list
-    apt-get update
-    apt-get install -y nodejs 2>&1
+        > /etc/apt/sources.list.d/nodesource.list || true
+    apt-get update || true
+    apt-get install -y nodejs 2>&1 || true
     if command -v node >/dev/null 2>&1; then
         echo "Node.js $(node --version) installed successfully"
     else

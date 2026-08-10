@@ -11,6 +11,17 @@
 // than silently running with $PLUGIN_VERSION undefined.
 require_once __DIR__ . '/version.php';
 
+// This script is a long-lived background daemon (spawned via postStart.sh
+// with `setsid php ...`), never a web-accessible page. If a request somehow
+// reaches it through the web server — direct URL hit, misconfigured routing,
+// whatever — the `while (true)` polling loop further down would tie up a
+// PHP-FPM/mod_php worker indefinitely. Bail out immediately for any SAPI
+// other than CLI, before any of the FPP includes below run.
+if (php_sapi_name() !== 'cli') {
+    http_response_code(403);
+    exit("ShowPilot listener runs as a background service only — not accessible via the web server.\n");
+}
+
 // Suppress FPP web UI JS output when running from CLI
 $skipJSsettings = true;
 include_once "/opt/fpp/www/config.php";
