@@ -33,7 +33,11 @@ function ensureConfigFile($path) {
     if (!file_exists($path)) {
         @touch($path);
     }
-    @chmod($path, 0666);
+    // 0660, not 0666: this runs under the web server's PHP handler, which on
+    // every FPP image we support runs as the same `fpp` user as fppd/the CLI
+    // listener. Group access already covers every legitimate writer — no
+    // reason to leave a file holding the ShowPilot show token world-writable.
+    @chmod($path, 0660);
     return file_exists($path) && is_readable($path);
 }
 
@@ -58,7 +62,7 @@ function writePluginSetting($path, $key, $value) {
     }
 
     $ok = @file_put_contents($path, implode("\n", $lines) . "\n");
-    @chmod($path, 0666);
+    @chmod($path, 0660);
     return $ok !== false;
 }
 
@@ -91,7 +95,7 @@ if ($action === 'raw') {
         respondJson(400, array('error' => 'Empty config'));
     }
     $ok = @file_put_contents($pluginConfigFile, $content);
-    @chmod($pluginConfigFile, 0666);
+    @chmod($pluginConfigFile, 0660);
     if ($ok === false) {
         respondJson(500, array('error' => 'Could not write plugin config'));
     }

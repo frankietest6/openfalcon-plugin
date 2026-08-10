@@ -83,7 +83,11 @@ $pluginSettings = parse_ini_file($pluginConfigFile);
 if (!file_exists($pluginConfigFile)) {
     @touch($pluginConfigFile);
 }
-@chmod($pluginConfigFile, 0666);
+// 0660, not 0666 — this CLI daemon and the web-invoked showpilot_config.php
+// both run as the `fpp` user on every FPP image we support, so group access
+// already covers every legitimate writer. See showpilot_config.php for the
+// same fix applied to its two write paths.
+@chmod($pluginConfigFile, 0660);
 $pluginSettings = @parse_ini_file($pluginConfigFile);
 if ($pluginSettings === false) $pluginSettings = array();
 

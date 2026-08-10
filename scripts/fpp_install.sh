@@ -42,9 +42,13 @@ chown -R fpp:fpp "$PLUGIN_DIR" 2>/dev/null || true
 
 # Older FPP installs can leave plugin config owned by the listener user only.
 # The web UI/API must also be able to update it when settings are changed.
+# chown to fpp:fpp + chmod 660 (not 666) covers this: fppd, the CLI listener,
+# and the web server's PHP handler all run as `fpp` on every FPP image we
+# support, so group access is enough — no need to make the file holding the
+# ShowPilot show token writable by every user on the host.
 touch "$CONFIG_FILE" 2>/dev/null || true
 chown fpp:fpp "$CONFIG_FILE" 2>/dev/null || true
-chmod 666 "$CONFIG_FILE" 2>/dev/null || true
+chmod 660 "$CONFIG_FILE" 2>/dev/null || true
 
 # Make all command scripts and lifecycle scripts executable so FPP can run them.
 # (git-tracked exec bit doesn't always survive every install path, so we do this
@@ -114,6 +118,14 @@ fi
 # Surface FPP's "Restart Required" banner in the plugin manager UI.
 # After the user clicks Restart, fppd cycles, postStop kills the listener,
 # postStart spawns a fresh one with the new code.
+#
+# Keep this unconditional. pluginInfo.json's versions[] range spans FPP
+# releases from before plugin hot-load/unload existed through FPP 10+ on a
+# single branch/sha — so even though this plugin is structurally safe to
+# hot-load on FPP versions that support it, older installs in that same
+# range still need the full fppd restart to pick up new code. Only drop
+# this call if versions[] is ever split so a dedicated FPP-10+-only entry
+# can rely on hot-load instead.
 setSetting restartFlag 1
 
 #fpp_install

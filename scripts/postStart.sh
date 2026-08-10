@@ -16,7 +16,7 @@ mkdir -p "$LOG_DIR"
 wait_for_pid_exit() {
     local pid="$1" max_ticks="$2" ticks=0
     while kill -0 "$pid" 2>/dev/null && [ "$ticks" -lt "$max_ticks" ]; do
-        sleep 0.1
+        sleep 0.1  # poll tick, not a flat wait — loop condition re-checks $pid every 0.1s and exits the instant it's gone
         ticks=$((ticks + 1))
     done
 }
@@ -25,7 +25,7 @@ wait_for_pid_exit() {
 wait_for_pattern_exit() {
     local pattern="$1" max_ticks="$2" ticks=0
     while pgrep -f "$pattern" >/dev/null 2>&1 && [ "$ticks" -lt "$max_ticks" ]; do
-        sleep 0.1
+        sleep 0.1  # poll tick, not a flat wait — loop condition re-checks the pattern every 0.1s and exits the instant it's gone
         ticks=$((ticks + 1))
     done
 }
@@ -49,10 +49,11 @@ chmod +x "$PLUGIN_DIR/listener_status.php" 2>/dev/null
 chmod +x "$PLUGIN_DIR/extract_audio.php" 2>/dev/null
 chmod +x "$PLUGIN_DIR/audio_daemon_status.php" 2>/dev/null
 
-# Keep the plugin config writable
+# Keep the plugin config writable. 660, not 666 — see fpp_install.sh for why
+# group access (fpp:fpp) is sufficient here.
 touch "$CONFIG_FILE" 2>/dev/null
 chown fpp:fpp "$CONFIG_FILE" 2>/dev/null
-chmod 666 "$CONFIG_FILE" 2>/dev/null
+chmod 660 "$CONFIG_FILE" 2>/dev/null
 
 # 2. Kill any existing processes
 # Try PID file first (clean), fall back to pkill (covers old installs)
