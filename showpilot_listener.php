@@ -27,8 +27,25 @@ $skipJSsettings = true;
 include_once "/opt/fpp/www/config.php";
 include_once "/opt/fpp/www/common.php";
 
-$pluginName = basename(dirname(__FILE__));
-$pluginPath = $settings['pluginDirectory'] . "/" . $pluginName . "/";
+// Fixed settings-file key, NOT the install directory name — every other
+// file in this plugin (showpilot_config.php, showpilot_ui.html, every
+// commands/*.php) hardcodes $pluginName = "showpilot" for exactly this
+// reason: it addresses the config file, log file, and WriteSettingToFile()
+// calls that must stay stable regardless of where FPP actually installs
+// this plugin. This file was the one exception, computing it from its own
+// directory instead (basename(dirname(__FILE__))) — harmless while the
+// install directory happened to be named "showpilot", but as of v0.13.74
+// the real directory is "showpilot-plugin", so this alone started reading
+// and writing a DIFFERENT config file (plugin.showpilot-plugin, freshly
+// empty) and a DIFFERENT log file (plugin-showpilot-plugin.log) than every
+// other part of the plugin — silently dropping serverUrl/showToken to
+// empty, which made every outbound report to ShowPilot's server a silent
+// no-op (see ofHttp()'s empty-credential guard). Found live: the ShowPilot
+// server showed the plugin as Offline, last seen over an hour ago, still
+// reporting version 0.13.73 — because the listener had stopped writing
+// anywhere the rest of the plugin (or a human) would think to look.
+$pluginName = "showpilot";
+$pluginPath = $settings['pluginDirectory'] . "/" . basename(dirname(__FILE__)) . "/";
 $logFile = $settings['logDirectory'] . "/plugin-" . $pluginName . ".log";
 $pluginConfigFile = $settings['configDirectory'] . "/plugin." . $pluginName;
 
