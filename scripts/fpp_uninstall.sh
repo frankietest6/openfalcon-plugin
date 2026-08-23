@@ -4,7 +4,10 @@
 
 . ${FPPDIR}/scripts/common
 
-PLUGIN_DIR="/home/fpp/media/plugins/showpilot"
+# Derived, not hardcoded — see fpp_install.sh for why (fpp-data#209 fallout).
+# FPP invokes this by its own full path (scripts/uninstall_plugin), so this
+# resolves correctly regardless of what the install directory is named.
+PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # Stop the running listener/audio daemon so nothing keeps running against a
 # plugin directory that's about to be deleted.

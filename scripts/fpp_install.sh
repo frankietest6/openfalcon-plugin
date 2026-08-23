@@ -23,7 +23,25 @@ set -o pipefail
 
 . ${FPPDIR}/scripts/common
 
-PLUGIN_DIR="/home/fpp/media/plugins/showpilot"
+# Derive our own install location instead of hardcoding it. FPP names this
+# directory after pluginInfo.json's repoName verbatim (case-sensitive, no
+# normalization — confirmed in FPP's InstallPluginFromInfo()), and that name
+# has changed once already (fpp-data#209 fallout: repoName went from
+# "showpilot" to "ShowPilot-plugin" to satisfy a bot check, which broke every
+# script here that had "/home/fpp/media/plugins/showpilot" hardcoded). Since
+# FPP always invokes this script by its own full path
+# (${PLUGINDIR}/$1/scripts/fpp_install.sh — see FPP's install_plugin/
+# runPluginInstallScript), deriving PLUGIN_DIR from our own location is
+# correct no matter what the directory is actually named, now or after any
+# future rename.
+PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PLUGIN_NAME="$(basename "$PLUGIN_DIR")"
+# NOTE: this is unrelated to CONFIG_FILE below. The settings-file suffix
+# ("plugin.showpilot") is a fixed key our PHP has always used with
+# FPP's WriteSettingToFile()/configDirectory convention — it must stay
+# "showpilot" forever regardless of the install directory name, or every
+# existing user's saved ShowPilot settings (including their show token)
+# would silently stop loading.
 CONFIG_FILE="/home/fpp/media/config/plugin.showpilot"
 
 # Force-sync with origin/main, discarding any local changes.
@@ -95,7 +113,7 @@ fi
 
 # ---- Install ws npm module for WebSocket support ----
 # Required for the audio daemon's position broadcast feature.
-PLUGIN_DIR="/home/fpp/media/plugins/showpilot"
+# (PLUGIN_DIR already derived above — no need to redeclare it here.)
 if command -v node >/dev/null 2>&1; then
     if [ ! -d "$PLUGIN_DIR/node_modules/ws" ]; then
         echo "Installing ws npm module..."
@@ -104,9 +122,12 @@ if command -v node >/dev/null 2>&1; then
 fi
 
 # ---- Build C++ MultiSync plugin ----
-# Clean up old incorrectly-named .so files if present
+# FPP dlopen()s "lib<plugin-dir-name>.so" (see Makefile) — compute it from
+# PLUGIN_NAME so this still finds the right file after any future rename.
+# Also clean up filenames used at various points in this plugin's history.
 rm -f "$PLUGIN_DIR/libfpp-showpilot-sync.so" 2>/dev/null || true
 rm -f "$PLUGIN_DIR/libshowpilot.so" 2>/dev/null || true
+rm -f "$PLUGIN_DIR/lib${PLUGIN_NAME}.so" 2>/dev/null || true
 
 if [ -f "$PLUGIN_DIR/Makefile" ] && [ -d "/opt/fpp/src" ]; then
     echo "Building ShowPilot MultiSync plugin..."

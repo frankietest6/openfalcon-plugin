@@ -1,11 +1,14 @@
 #!/bin/bash
 # ============================================================
 # ShowPilot Plugin — Deploy Script
-# Run on FPP (in /home/fpp/media/plugins/showpilot) to update.
+# Run this from inside the plugin's own install directory on FPP
+# (wherever FPP cloned it — see fpp_install.sh for why that name isn't
+# assumed to be "showpilot" anymore).
 # ============================================================
 set -e
 
 cd "$(dirname "$0")"
+PLUGIN_DIR="$(pwd)"
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -21,7 +24,7 @@ sudo chown -R fpp:fpp .
 echo -e "${YELLOW}→ Restarting listener...${NC}"
 sudo pkill -f showpilot_listener || true
 sleep 1
-nohup php /home/fpp/media/plugins/showpilot/showpilot_listener.php > /dev/null 2>&1 &
+nohup php "$PLUGIN_DIR/showpilot_listener.php" > /dev/null 2>&1 &
 disown
 
 echo

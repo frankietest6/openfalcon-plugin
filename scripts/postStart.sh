@@ -5,8 +5,13 @@
 # versions, which caused the daemon to spawn twice and corrupt the relay
 # with interleaved bytes from two instances.
 
-PLUGIN_DIR="/home/fpp/media/plugins/showpilot"
+# Derived, not hardcoded (fpp-data#209 fallout — see fpp_install.sh's
+# comment for the full story). FPP invokes postStart.sh by its own full path
+# (scripts/functions' runPostStartScripts), so this resolves correctly
+# regardless of what the install directory is named.
+PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG_DIR="/home/fpp/media/logs"
+# Fixed settings-file key, independent of PLUGIN_DIR — see fpp_install.sh.
 CONFIG_FILE="/home/fpp/media/config/plugin.showpilot"
 LOCK_FILE="/tmp/showpilot-poststart.lock"
 mkdir -p "$LOG_DIR"
@@ -82,8 +87,9 @@ setsid /usr/bin/php "$PLUGIN_DIR/showpilot_listener.php" \
 # plugin itself was reinstalled, which already rebuilds it). If it's
 # missing, something went wrong at install time — log it and move on
 # instead of blocking startup on a build.
-if [ ! -f "$PLUGIN_DIR/libshowpilot.so" ] && [ -f "$PLUGIN_DIR/Makefile" ]; then
-    echo "WARN: libshowpilot.so not found — MultiSync plugin was not built during install. Re-run the plugin's Install Script from FPP's Plugin Manager to rebuild it."
+SHLIB_NAME="lib$(basename "$PLUGIN_DIR").so"
+if [ ! -f "$PLUGIN_DIR/$SHLIB_NAME" ] && [ -f "$PLUGIN_DIR/Makefile" ]; then
+    echo "WARN: $SHLIB_NAME not found — MultiSync plugin was not built during install. Re-run the plugin's Install Script from FPP's Plugin Manager to rebuild it."
 fi
 
 # 4. Spawn audio daemon if Node 18+ available

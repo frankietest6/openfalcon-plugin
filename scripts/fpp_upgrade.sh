@@ -44,8 +44,16 @@
 
 . ${FPPDIR}/scripts/common
 
-PLUGIN_DIR="/home/fpp/media/plugins/showpilot"
-PLUGIN_NAME="showpilot"
+# Derived, not hardcoded (fpp-data#209 fallout — see fpp_install.sh's comment
+# for the full story). This matters doubly here: PLUGIN_NAME also has to be
+# fppd's own name for us, since PluginManager::loadPlugin()/unloadPlugin()
+# key strictly "by directory name, which is what the Plugin Manager and the
+# REST endpoints pass" (confirmed by reading src/Plugins.cpp on
+# FalconChristmas/fpp master) — a hardcoded PLUGIN_NAME that ever drifted
+# from the real directory would make every hot-reload call below silently
+# target the wrong (or a nonexistent) plugin.
+PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PLUGIN_NAME="$(basename "$PLUGIN_DIR")"
 HOTRELOAD_OK=1
 
 # ---- 1. Ask fppd to unload the currently-running C++ plugin (if any).
@@ -62,7 +70,9 @@ fi
 # ---- 2. Rebuild the C++ MultiSync plugin against the freshly-pulled
 # source. `make clean` removes the old .so first, so the rebuilt file gets
 # a new inode — see the header comment above for why that matters.
-rm -f "$PLUGIN_DIR/libshowpilot.so" 2>/dev/null || true
+# FPP dlopen()s "lib<plugin-dir-name>.so" (see Makefile), so the filename
+# has to track PLUGIN_NAME too, not just PLUGIN_DIR.
+rm -f "$PLUGIN_DIR/lib${PLUGIN_NAME}.so" 2>/dev/null || true
 if [ -f "$PLUGIN_DIR/Makefile" ] && [ -d "/opt/fpp/src" ]; then
     echo "Rebuilding ShowPilot MultiSync plugin..."
     if (cd "$PLUGIN_DIR" && make clean && make) 2>&1; then

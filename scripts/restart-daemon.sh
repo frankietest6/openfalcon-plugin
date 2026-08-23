@@ -3,10 +3,15 @@
 # Run this after a plugin update to pick up the new showpilot_audio.js
 # without needing a full fppd restart.
 #
-# Usage: sudo /home/fpp/media/plugins/showpilot/scripts/restart-daemon.sh
+# Usage: sudo <plugin-dir>/scripts/restart-daemon.sh
 
-PLUGIN_DIR="/home/fpp/media/plugins/showpilot"
+# Derived, not hardcoded (fpp-data#209 fallout — see fpp_install.sh's
+# comment for the full story). This script is always invoked by its own
+# full path (fpp_upgrade.sh), so this resolves correctly regardless of
+# what the install directory is named.
+PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG_DIR="/home/fpp/media/logs"
+# Fixed settings-file key, independent of PLUGIN_DIR — see fpp_install.sh.
 CONFIG_FILE="/home/fpp/media/config/plugin.showpilot"
 PID_FILE="/tmp/showpilot-audio.pid"
 

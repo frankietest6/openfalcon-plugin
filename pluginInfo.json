@@ -1,5 +1,5 @@
 {
-	"repoName": "ShowPilot-plugin",
+	"repoName": "showpilot-plugin",
 	"name": "ShowPilot Plugin",
 	"author": "ShowPilot Project",
 	"description": "Connects FPP to a self-hosted ShowPilot server for audio playback, viewer voting, and jukebox control.",
